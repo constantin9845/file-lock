@@ -28,15 +28,21 @@ int main(int argc, char const *argv[]){
 
 
 		path = argv[1];
-		fileFlag = ((std::string(argv[1]).substr(1)[0]) == 'f') ? false : true; // 1 for single file
-		directionFlag = ((std::string(argv[3]).substr(1,2)) == "enc") ? 0 : 1;  // 1 for encryption
-		algorithmFlag = ((std::string(argv[3]).substr(1,2)) == "aes") ? 0 : 1;  // 1 for aes
+		fileFlag = ((std::string(argv[2]).substr(1)[0]) == 'f') ? true : false; // true for single file
+		directionFlag = ((std::string(argv[3]).substr(1,3)) == "enc") ? 1 : 0;  // 1 for encryption
+		algorithmFlag = ((std::string(argv[4]).substr(1,3)) == "aes") ? 1 : 0;  // 1 for aes
 
+		std::cout<<directionFlag;
 		
-		// single file and incryption
+		// single file and encryption
 		if(fileFlag && directionFlag){
 			fileHandler::encryptFile(path, algorithmFlag, rFlag);
 			std::cout<<"Find Key/IV and encryted file in Downloads folder"<<std::endl;
+			return 0;
+		}
+		else if(fileFlag && !directionFlag){
+			fileHandler::decryptFile(path, algorithmFlag, rFlag);
+			std::cout<<"Find Key/IV and decrypted file in Downloads folder"<<std::endl;
 			return 0;
 		}
 		else{

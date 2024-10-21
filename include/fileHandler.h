@@ -11,7 +11,7 @@ public:
 	//static void decryptDirectory();
 
 	static void encryptFile(const std::string& path, const bool& algorithmFlag, const bool& rFlag);
-	//static void decryptFile();
+	static void decryptFile(const std::string& path, const bool& algorithmFlag, const bool& rFlag);
 
 	//static std::string generateKey();
 

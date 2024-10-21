@@ -1,7 +1,7 @@
 // Author: Konstantin Yakovlev A.
 // Date: 08/29/2024
 
-#include "trivium.h"
+#include "../include/trivium.h"
 
 
 void Trivium::stringToBits(std::string input, std::vector<bool>& X){

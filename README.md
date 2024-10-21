@@ -2,8 +2,9 @@
 Encrypt individual files using the AES block cipher
 
 ### To Do
-- File data read into byte array -> apply encryption
-- keep track of padding!
+- Encryption/decryption with aes works (tested) -> refine logic + add file name/path/extension
+- need a way to track padding -> attach to key? attach to file?
+-- encrypted and decrypted files are exactly the same size
 - test functionality till here
 
 

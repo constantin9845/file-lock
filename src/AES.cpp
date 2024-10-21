@@ -1,4 +1,4 @@
-#include "AES.h"
+#include "../include/AES.h"
 
 // byte substitution layer
 void AES::byteSub(unsigned char state[4][4]){
