@@ -31,8 +31,6 @@ int main(int argc, char const *argv[]){
 		fileFlag = ((std::string(argv[2]).substr(1)[0]) == 'f') ? true : false; // true for single file
 		directionFlag = ((std::string(argv[3]).substr(1,3)) == "enc") ? 1 : 0;  // 1 for encryption
 		algorithmFlag = ((std::string(argv[4]).substr(1,3)) == "aes") ? 1 : 0;  // 1 for aes
-
-		std::cout<<directionFlag;
 		
 		// single file and encryption
 		if(fileFlag && directionFlag){

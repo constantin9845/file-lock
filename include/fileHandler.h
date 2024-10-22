@@ -2,6 +2,8 @@
 #include "AES.h"
 #include <iostream>
 #include <fstream>
+#include <filesystem>
+#include <cstdlib>
 
 
 class fileHandler{
@@ -16,6 +18,9 @@ public:
 	//static std::string generateKey();
 
 private:
+	static std::string getFileName(const std::string& filePath);
+
+	static std::string getOutputPath(const std::string& fileName);
 
 
 };
