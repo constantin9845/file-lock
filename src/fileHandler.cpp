@@ -171,7 +171,7 @@ std::string fileHandler::getOutputPath(const std::string& fileName){
 	}
 
 	std::string targetFolder = std::string(homeDir) + "\\Downloads\\";
-	std::string outputPath = targetFolder+filename;
+	std::string outputPath = targetFolder+fileName;
 
 	return outputPath;
 
