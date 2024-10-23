@@ -6,9 +6,8 @@
 #include <string>
 
 #ifdef _WIN32
-#include <windows.h>
-#include <bcrypt.h> 
-#pragma comment(lib, "bcrypt.lib") 
+	#include <windows.h>
+	#include <wincrypt.h> 
 #endif
 
 

@@ -201,7 +201,7 @@ unsigned char* fileHandler::genKey(){
 #ifdef _WIN32
 
 	// WINDOWS
-	if(BCryptGenRandom(NULL, buffer, 16, BCRYPT_USE_SYSTEM_PREFERRED_RNG) != 0){
+	if(!RtlGenRandom(buffer, 16)){
 		std::cerr << "Error generating random bytes on WIN" << std::endl;
 		delete[] buffer;
         exit(3);
