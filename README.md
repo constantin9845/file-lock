@@ -5,8 +5,6 @@ Encrypt individual files using the AES block cipher
 - test windows file extension
 - test functionality till here / refine program structure
 
-### output file location
-
 
 
 ### user interaction

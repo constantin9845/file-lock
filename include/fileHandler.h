@@ -1,9 +1,15 @@
-#include "trivium.h"
 #include "AES.h"
 #include <iostream>
 #include <fstream>
 #include <filesystem>
 #include <cstdlib>
+#include <string>
+
+#ifdef _WIN32
+#include <windows.h>
+#include <bcrypt.h> 
+#pragma comment(lib, "bcrypt.lib") 
+#endif
 
 
 class fileHandler{
@@ -15,7 +21,7 @@ public:
 	static void encryptFile(const std::string& path, const bool& algorithmFlag, const bool& rFlag);
 	static void decryptFile(const std::string& path, const bool& algorithmFlag, const bool& rFlag);
 
-	//static std::string generateKey();
+	static unsigned char* genKey();
 
 private:
 	static std::string getFileName(const std::string& filePath);

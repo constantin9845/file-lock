@@ -4,7 +4,7 @@ void fileHandler::encryptFile(const std::string& path, const bool& algorithmFlag
 	
 	std::ifstream inputFile(path, std::ios::binary);
 
-	std::string outputPath = getOutputPath(getFileName(path));
+	std::string outputPath = getOutputPath("_"+getFileName(path));
 
 	std::ofstream outputFile(outputPath, std::ios::binary);
 
@@ -81,7 +81,7 @@ void fileHandler::decryptFile(const std::string& path, const bool& algorithmFlag
 	
 	std::ifstream inputFile(path, std::ios::binary);
 
-	std::string outputPath = getOutputPath(getFileName(path));
+	std::string outputPath = getOutputPath(getFileName(path).substr(1));
 
 	std::ofstream outputFile(outputPath, std::ios::binary);
 
@@ -191,4 +191,44 @@ std::string fileHandler::getOutputPath(const std::string& fileName){
 	return outputPath;
 
 #endif
+}
+
+unsigned char* fileHandler::genKey(){
+
+	unsigned char* buffer = new unsigned char[16];
+
+	// check OS of user
+#ifdef _WIN32
+
+	// WINDOWS
+	if(BCryptGenRandom(NULL, buffer, 16, BCRYPT_USE_SYSTEM_PREFERRED_RNG) != 0){
+		std::cerr << "Error generating random bytes on WIN" << std::endl;
+		delete[] buffer;
+        exit(3);
+	}	
+	
+
+#else
+	// MAC / LINUX
+
+	std::ifstream urandom("/dev/urandom", std::ios::binary);
+	if(!urandom){
+		std::cout<<"error opening urandom";
+		delete[] buffer;
+		exit(3);
+	}
+
+	urandom.read(reinterpret_cast<char*>(buffer),16);
+
+	if(!urandom){
+		std::cout<<"error reading urandom";
+		delete[] buffer;
+		exit(3);
+	}
+
+	urandom.close();
+
+#endif
+
+	return buffer;
 }
