@@ -201,13 +201,12 @@ unsigned char* fileHandler::genKey(){
 #ifdef _WIN32
 
 	// WINDOWS
-	for(int i = 0; i<16; i++){
-		unsigned int temp;
-		if(rand_s(&rand_value) != 0){
-			std::cerr << "Error generating random bytes using rand_s()" << std::endl;
-            return 1;
-		}
-		buffer[i] = static_cast<unsigned char>(rand_value & 0xFF);
+	std::random_device rd;
+	std::mt19937 eng(rd());
+	std::uniform_int_distribution<> distr(0, 255);
+
+	for(int i = 0; i < 16; i++){
+		buffer[i] = static_cast<unsigned char>(distr(eng));
 	}
 	
 

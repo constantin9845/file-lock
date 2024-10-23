@@ -5,6 +5,10 @@
 #include <cstdlib>
 #include <string>
 
+#ifdef _WIN32
+	#include <random>
+#endif
+
 
 
 class fileHandler{
