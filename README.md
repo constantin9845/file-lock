@@ -2,8 +2,9 @@
 Encrypt individual files using the AES block cipher
 
 ### To Do
-- test windows file extension
-- test functionality till here / refine program structure
+- full path needed for file input
+- add option to use/generate key
+- return key inside file upon completion -> (zip together with output file?)
 
 
 
