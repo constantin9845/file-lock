@@ -201,11 +201,14 @@ unsigned char* fileHandler::genKey(){
 #ifdef _WIN32
 
 	// WINDOWS
-	if(!RtlGenRandom(buffer, 16)){
-		std::cerr << "Error generating random bytes on WIN" << std::endl;
-		delete[] buffer;
-        exit(3);
-	}	
+	for(int i = 0; i<16; i++){
+		unsigned int temp;
+		if(rand_s(&rand_value) != 0){
+			std::cerr << "Error generating random bytes using rand_s()" << std::endl;
+            return 1;
+		}
+		buffer[i] = static_cast<unsigned char>(rand_value & 0xFF);
+	}
 	
 
 #else
