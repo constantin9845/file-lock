@@ -194,7 +194,7 @@ void AES::inverseApplyKey(unsigned char state[4][4], unsigned int* k, int keyInd
 
 
 //128 Key scheduler
-unsigned int* AES::genKey(unsigned char K[]){
+unsigned int* AES::genKey(unsigned char* K){
 
 	// will store 4 bytes in each element
 	unsigned int* W = new unsigned int[44];
@@ -373,7 +373,7 @@ unsigned char AES::GFmultiply(unsigned char b, unsigned char temp){
 	}
 }
 
-void AES::encrypt(unsigned char input[], unsigned char out[], unsigned char KEY[]){
+void AES::encrypt(unsigned char input[], unsigned char out[], unsigned char* KEY){
 
 	// stores ciphertext
 	unsigned char state[4][4];
@@ -432,7 +432,7 @@ void AES::encrypt(unsigned char input[], unsigned char out[], unsigned char KEY[
 }
 
 
-void AES::decrypt(unsigned char input[], unsigned char out[], unsigned char KEY[]){
+void AES::decrypt(unsigned char input[], unsigned char out[], unsigned char* KEY){
 	/*
 	Structure
 	1. key addition

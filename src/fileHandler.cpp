@@ -31,12 +31,7 @@ void fileHandler::encryptFile(const std::string& path){
 		exit(2);
 	}
 
-	unsigned char key[16] = {
-		0x2b, 0x7e, 0x15, 0x16,
-		0x28, 0xae, 0xd2, 0xa6,
-		0xab, 0xf7, 0x15, 0x88,
-		0x09, 0xcf, 0x4f, 0x3c
-    };
+	unsigned char* key = genKey();
 
 	for(int i = 0; i < size+padding; i+=16){
 		unsigned char temp[16];
@@ -62,7 +57,7 @@ void fileHandler::encryptFile(const std::string& path){
 		exit(3);
 	}
 
-	storeKey(genKey());
+	storeKey(key);
 
 	inputFile.close();
 	outputFile.close();
@@ -166,15 +161,14 @@ std::string fileHandler::getOutputPath(const std::string& fileName, bool deleteO
 	std::string targetFolder = std::string(homeDir) + "\\Downloads\\";
 	std::string outputPath = targetFolder+fileName;
 
+	// WINDOWS needs other way of handling directories
+	// current solution throws exception -> access denied
 	if(deleteOld){
 		if(std::filesystem::exists(targetFolder)){
 			std::filesystem::remove_all(targetFolder);
 		}
 
-		if(std::filesystem::create_directory(targetFolder)){
-			std::cout<<"dir created";
-		}
-		else{
+		if(!std::filesystem::create_directory(targetFolder)){
 			std::cout<<"dir not created";
 			exit(10);
 		}
@@ -201,10 +195,7 @@ std::string fileHandler::getOutputPath(const std::string& fileName, bool deleteO
 			std::filesystem::remove_all(targetFolder);
 		}
 
-		if(std::filesystem::create_directory(targetFolder)){
-			std::cout<<"dir created";
-		}
-		else{
+		if(!std::filesystem::create_directory(targetFolder)){
 			std::cout<<"dir not created";
 			exit(10);
 		}
@@ -257,6 +248,33 @@ unsigned char* fileHandler::genKey(){
 	return buffer;
 }
 
+unsigned char* fileHandler::readKey(const std::string& path){
+
+	unsigned char* buffer = new unsigned char[16];
+
+	std::ifstream keyFileStream(path, std::ios::binary);
+
+	if(!keyFileStream){
+		std::cout<<"error opening key file";
+		delete[] buffer;
+		exit(3);
+	}
+
+
+	if(!keyFileStream.read(reinterpret_cast<char*>(buffer), 16)){
+		std::cout<<"error reading key file";
+		delete[] buffer;
+		exit(3);
+	}
+
+	for(int i = 0; i < 16; i++){
+		std::cout<<std::hex<<(int)buffer[i]<<" | ";
+	}
+
+	keyFileStream.close();
+	return buffer;
+}
+
 void fileHandler::storeKey(unsigned char* key){
 
 	std::string outputPath = getOutputPath("_key", false);
@@ -275,4 +293,6 @@ void fileHandler::storeKey(unsigned char* key){
 
 	keyOutput.close();
 }
+
+
 

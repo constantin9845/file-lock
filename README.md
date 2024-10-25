@@ -2,24 +2,21 @@
 Encrypt individual files using the AES block cipher
 
 ### To Do
-- full path needed for file input
-- add option to use/generate key
-- return key inside file upon completion -> (zip together with output file?)
+- WINDOWS fix creating output directory in getOutputPath()
+- add option/logic to use own key
+- implement directory encryption
+- refine logic / split up encryption process
+
 
 
 
 ### user interaction
 -> bash script:
-- ./run <path> -d/f(dir or file) -enc/dec -algorithm -r(replace original, w/out = duplicate)
+- ./run <path> -d/f(dir or file) -enc/dec -r(replace original, w/out = duplicate)
 
-- if TRIVIUM DEC: promt <key> <IV>
-- if TRIVIUM ENC: promt <key> <IV> or empty for new
 
-- if AES DEC: promt <key>
-- if AES ENC: promt <key> or empty for new
-
-- AFTER ENC : to downloads/ :
-	 txt file w/ key and IV / 
+- AFTER ENC : to downloads/target/ :
+	 file w/ key and IV / 
 	 if -r -> encrypted file as well
 
 

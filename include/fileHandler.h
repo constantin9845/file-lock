@@ -23,11 +23,13 @@ public:
 
 	static unsigned char* genKey();
 
+	static void storeKey(unsigned char* key);
+
+	static unsigned char* readKey(const std::string& path);
+
 private:
 	static std::string getFileName(const std::string& filePath);
 
 	static std::string getOutputPath(const std::string& fileName, bool deleteOld);
-
-	static void storeKey(unsigned char* key);
 
 };

@@ -6,11 +6,11 @@ class AES{
 
         // takes array 16 bytes of plain text / (text in hexadecimal)
         // takes a second array of same size that contains the key
-		static void encrypt(unsigned char input[], unsigned char out[], unsigned char KEY[]);
+		static void encrypt(unsigned char input[], unsigned char out[], unsigned char* KEY);
 
         // takes array of 16 bytes of ciphertext (in hexadecimal)
         // takes in 128 bit key
-        static void decrypt(unsigned char input[], unsigned char output[], unsigned char KEY[]);
+        static void decrypt(unsigned char input[], unsigned char output[], unsigned char* KEY);
 
 	private:
 
@@ -81,7 +81,7 @@ class AES{
             128 Key scheduler
             Generates key 
         */
-        static unsigned int* genKey(unsigned char K[]);
+        static unsigned int* genKey(unsigned char* K);
 
         /*
             function removes symmetry from round keys
