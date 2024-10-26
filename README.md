@@ -2,8 +2,7 @@
 Encrypt individual files using the AES block cipher
 
 ### To Do
-- WINDOWS fix creating output directory in getOutputPath()
-- add option/logic to use own key
+
 - implement directory encryption
 - refine logic / split up encryption process
 

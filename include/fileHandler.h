@@ -5,9 +5,11 @@
 #include <cstdlib>
 #include <string>
 #include <filesystem>
+#include <system_error>
 
 #ifdef _WIN32
 	#include <random>
+	#include <windows.h>
 #endif
 
 
@@ -19,7 +21,9 @@ public:
 	//static void decryptDirectory();
 
 	static void encryptFile(const std::string& path);
-	static void decryptFile(const std::string& path);
+	static void encryptFile(const std::string& path, const std::string& keyPath);
+	
+	static void decryptFile(const std::string& path, const std::string& keyPath);
 
 	static unsigned char* genKey();
 
