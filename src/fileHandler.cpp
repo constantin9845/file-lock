@@ -130,8 +130,6 @@ void fileHandler::encryptFile(const std::string& path, const std::string& keyPat
 	delete[] buffer;
 }
 
-
-
 void fileHandler::decryptFile(const std::string& path, const std::string& keyPath){
 	
 	std::ifstream inputFile(path, std::ios::binary);
@@ -405,6 +403,8 @@ bool fileHandler::createRootDir(){
 
 std::string fileHandler::parsePath(const std::string& filePath){
 
+#ifdef _WIN32
+
 	std::filesystem::path p(filePath);
 	std::string outputPath;
 
@@ -421,8 +421,6 @@ std::string fileHandler::parsePath(const std::string& filePath){
 		t = newP.string();
 	}
 
-#ifdef _WIN32
-
 	const char* homeDir = std::getenv("USERPROFILE");
 
 	if(homeDir == nullptr){
@@ -432,10 +430,28 @@ std::string fileHandler::parsePath(const std::string& filePath){
 
 	std::string targetFolder = std::string(homeDir) + "\\Downloads\\target\\";
 
-	outputPath = targetFolder+t;
+	std::cout<<filePath<<std::endl;
+
+	return outputPath;
 
 
 #else
+
+	std::filesystem::path p(filePath);
+	std::string outputPath;
+
+	auto index = std::find(p.begin(), p.end(), "work");
+	std::string t;
+
+	if(index != p.end()){
+		std::filesystem::path newP;
+
+		for(auto it = index; it != p.end(); ++it){
+			newP /= *it;
+		}
+
+		t = newP.string();
+	}
 
 	const char* homeDir = std::getenv("HOME");
 
@@ -448,8 +464,10 @@ std::string fileHandler::parsePath(const std::string& filePath){
 
 	outputPath = targetFolder+t;
 
+	return outputPath;
+
 #endif
 
-	return outputPath;
+	
 
 }

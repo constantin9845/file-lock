@@ -31,7 +31,7 @@ int main(int argc, char const *argv[]){
 		std::string star = fileHandler::getFileName(path);
 
 		// set directory flag
-		if(star == "*"){ dirFlag = true; }else{ dirFlag = false; }
+		if(star.size() == 0){ dirFlag = true; }else{ dirFlag = false; }
 
 		// single file encryption
 		if(directionFlag && !dirFlag){
@@ -99,6 +99,7 @@ int main(int argc, char const *argv[]){
 		}
 	}
 	else{
+		std::cout<<"else";
 		invalid();
 	}
 
