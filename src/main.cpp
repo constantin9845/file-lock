@@ -10,7 +10,7 @@ int main(int argc, char const *argv[]){
 	
 	// valid number of arguments
 	if(argc == 3 || argc == 4){
-		bool directionFlag, ownKey = false;
+		bool directionFlag, ownKey = false, dirFlag;
 		std::string path; 
 		std::string keyPath;
 
@@ -18,6 +18,7 @@ int main(int argc, char const *argv[]){
 		if(std::string(argv[1]).size() < 1){ std::cout<<"1"<<std::endl; invalid(); }
 		if(std::string(argv[2]) != "-enc" && std::string(argv[2]) != "-dec"){ std::cout<<"2"<<std::endl; invalid(); }
 
+		// Check for input key
 		if(argc == 4){
 			ownKey = true;
 			keyPath = argv[3];
@@ -26,8 +27,14 @@ int main(int argc, char const *argv[]){
 		path = argv[1];
 		directionFlag = ((std::string(argv[2]).substr(1,3)) == "enc") ? 1 : 0;  // 1 for encryption
 
-		// single file and encryption
-		if(directionFlag){
+		// Check if single file or directory
+		std::string star = fileHandler::getFileName(path);
+
+		// set directory flag
+		if(star == "*"){ dirFlag = true; }else{ dirFlag = false; }
+
+		// single file encryption
+		if(directionFlag && !dirFlag){
 			if(ownKey){
 				fileHandler::encryptFile(path, keyPath);
 				std::cout<<"Find encryted file in Downloads folder"<<std::endl;
@@ -39,10 +46,52 @@ int main(int argc, char const *argv[]){
 
 			return 0;
 		}
-		else if(!directionFlag){
+		// single file decryption
+		else if(!directionFlag && !dirFlag){
 			fileHandler::decryptFile(path, keyPath);
 			std::cout<<"Find decrypted file in Downloads folder"<<std::endl;
 			return 0;
+		}
+		// directory encryption
+		else if(directionFlag && dirFlag){
+
+			//  get root directory
+			std::string parentDir = path.substr(0, path.size()-1);
+
+
+			// create new root dir / REPLACES EXISTING ONE
+			if(!fileHandler::createRootDir()){
+				std::cout<<"Could not create target Directory.";
+				exit(3);
+			}
+			
+			// check if dir exists and if valid dir
+			if(std::filesystem::exists(parentDir) && std::filesystem::is_directory(parentDir)){
+
+				// iterate each file/dir
+				for(const auto& entry : std::filesystem::recursive_directory_iterator(parentDir)){
+					if(std::filesystem::is_regular_file(entry) && entry.path().filename().string().front() != '.'){
+						
+						
+						// parse new path for current file
+						std::string currentFile = fileHandler::parsePath(entry.path().string());
+						if(currentFile == "."){
+							std::cout<<"could not parse file path";
+							exit(3);
+						}
+						
+						// recreate path inside target folder
+						std::cout<<fileHandler::parsePath(entry.path().string())<<std::endl;
+
+						// encrypt file
+						//fileHandler::encryptFile(entry.path().string(), dirFlag);
+					}
+				}
+			}
+		}
+		// directory decryption
+		else if(!directionFlag && dirFlag){
+
 		}
 		else{
 			// iterate directory;

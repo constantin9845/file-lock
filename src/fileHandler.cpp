@@ -130,6 +130,8 @@ void fileHandler::encryptFile(const std::string& path, const std::string& keyPat
 	delete[] buffer;
 }
 
+
+
 void fileHandler::decryptFile(const std::string& path, const std::string& keyPath){
 	
 	std::ifstream inputFile(path, std::ios::binary);
@@ -349,4 +351,105 @@ void fileHandler::storeKey(unsigned char* key){
 	}
 
 	keyOutput.close();
+}
+
+bool fileHandler::createRootDir(){
+	// check OS
+// windows
+#ifdef _WIN32
+
+	const char* homeDir = std::getenv("USERPROFILE");
+
+	if(homeDir == nullptr){
+		std::cerr << "Failed to get USERPROFILE environment variable." << std::endl;
+        exit(1);
+	}
+
+	std::string targetFolder = std::string(homeDir) + "\\Downloads\\target\\";
+
+	if(std::filesystem::exists(targetFolder)){
+		std::filesystem::remove_all(targetFolder);
+	}
+
+	if(!std::filesystem::create_directory(targetFolder)){
+		return false;
+	}
+
+	return true;
+
+// Mac/Linux
+#else
+
+	const char* homeDir = std::getenv("HOME");
+
+	if(homeDir == nullptr){
+		std::cerr << "Failed to get HOME environment variable." << std::endl;
+		exit(1);
+	}
+
+	// create new folder to store file + key
+	std::string targetFolder = std::string(homeDir) + "/Downloads/target/";
+
+	if(std::filesystem::exists(targetFolder)){
+		std::filesystem::remove_all(targetFolder);
+	}
+
+	if(!std::filesystem::create_directory(targetFolder)){
+		return false;
+	}
+
+	return true;
+
+#endif
+}
+
+std::string fileHandler::parsePath(const std::string& filePath){
+
+	std::filesystem::path p(filePath);
+	std::string outputPath;
+
+	auto index = std::find(p.begin(), p.end(), "work");
+	std::string t;
+
+	if(index != p.end()){
+		std::filesystem::path newP;
+
+		for(auto it = index; it != p.end(); ++it){
+			newP /= *it;
+		}
+
+		t = newP.string();
+	}
+
+#ifdef _WIN32
+
+	const char* homeDir = std::getenv("USERPROFILE");
+
+	if(homeDir == nullptr){
+		std::cerr << "Failed to get USERPROFILE environment variable." << std::endl;
+        exit(1);
+	}
+
+	std::string targetFolder = std::string(homeDir) + "\\Downloads\\target\\";
+
+	outputPath = targetFolder+t;
+
+
+#else
+
+	const char* homeDir = std::getenv("HOME");
+
+	if(homeDir == nullptr){
+		std::cerr << "Failed to get HOME environment variable." << std::endl;
+		exit(1);
+	}
+
+	std::string targetFolder = std::string(homeDir) + "/Downloads/target/";
+
+	outputPath = targetFolder+t;
+
+#endif
+
+	return outputPath;
+
 }

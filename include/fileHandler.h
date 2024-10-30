@@ -6,6 +6,7 @@
 #include <string>
 #include <filesystem>
 #include <system_error>
+#include <algorithm>
 
 #ifdef _WIN32
 	#include <random>
@@ -21,6 +22,7 @@ public:
 	//static void decryptDirectory();
 
 	static void encryptFile(const std::string& path);
+	//static void encryptFile(const std::string& path, bool dirFlag);
 	static void encryptFile(const std::string& path, const std::string& keyPath);
 	
 	static void decryptFile(const std::string& path, const std::string& keyPath);
@@ -31,9 +33,15 @@ public:
 
 	static unsigned char* readKey(const std::string& path);
 
-private:
 	static std::string getFileName(const std::string& filePath);
 
 	static std::string getOutputPath(const std::string& fileName, bool deleteOld);
+
+	static bool createRootDir();
+
+	static std::string parsePath(const std::string& filePath);
+
+private:
+	
 
 };
