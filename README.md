@@ -4,14 +4,23 @@ Encrypt individual files using the AES block cipher
 ### To Do
 
 - implement directory encryption
-- refine logic / split up encryption process
+- Debug file path parsing on WIN -> * symbol causing issues, change to empty filename
+-- Linux keeps star symbol
+- add encryotion files to directory function
 
+- directory enc can have new key for each file or use single key
+- accept file with keys for directory enc/dec
 
+### Directory enc/dec process
+
+- iterate files -> pass to enc/dec function
+- sub dirs? path module can iterate -> need to recreate file structure in original/target folder
+-- subdirectories relative to input directory need to be recreated before file is saved
 
 
 ### user interaction
 -> bash script:
-- ./run <path> -d/f(dir or file) -enc/dec -r(replace original, w/out = duplicate)
+- ./run <path> -enc/dec -<key>(optional)
 
 
 - AFTER ENC : to downloads/target/ :

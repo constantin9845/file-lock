@@ -27,11 +27,21 @@ int main(int argc, char const *argv[]){
 		path = argv[1];
 		directionFlag = ((std::string(argv[2]).substr(1,3)) == "enc") ? 1 : 0;  // 1 for encryption
 
+#ifdef _WIN32
+
 		// Check if single file or directory
 		std::string star = fileHandler::getFileName(path);
 
 		// set directory flag
 		if(star.size() == 0){ dirFlag = true; }else{ dirFlag = false; }
+
+#else
+		// Check if single file or directory
+		std::string star = fileHandler::getFileName(path);
+
+		// set directory flag
+		if(star == "*"){ dirFlag = true; }else{ dirFlag = false; }
+#endif
 
 		// single file encryption
 		if(directionFlag && !dirFlag){
