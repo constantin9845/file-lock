@@ -66,6 +66,66 @@ void fileHandler::encryptFile(const std::string& path){
 	delete[] buffer;
 }
 
+void fileHandler::encryptFile(const std::string& path, const std::string& outputPath, bool dirFlag, unsigned char* key){
+
+	std::ifstream inputFile(path, std::ios::binary);
+
+	std::ofstream outputFile(outputPath, std::ios::binary);
+
+	if(!inputFile){
+		std::cout<<"Error opening file.";
+		exit(2);
+	}
+
+	// get size of file
+	inputFile.seekg(0, std::ios::end);
+	std::streamsize size = inputFile.tellg();
+	inputFile.seekg(0, std::ios::beg);
+
+
+	// padding needed for AES
+	std::streamsize padding = 16-(size%16);
+
+	// array to store bytes 
+	unsigned char* buffer = new unsigned char[size+padding];
+
+	// read data into buffer
+	if(!inputFile.read(reinterpret_cast<char*>(buffer),size)){
+		std::cout<<"error";
+		delete[] buffer;
+		exit(2);
+	}
+
+	for(int i = 0; i < size+padding; i+=16){
+		unsigned char temp[16];
+		unsigned char tempResult[16];
+
+		// load 16 bytes
+		for(int j = 0, index = i; j < 16; j++, index++){
+			temp[j] = buffer[index];
+		}
+		
+		AES::encrypt(temp, tempResult, key);
+
+		// store encrypted back in buffer
+		for(int j = 0, index = i; j < 16; j++, index++){
+			buffer[index] = tempResult[j];
+		}
+
+	}
+
+	if(!outputFile.write(reinterpret_cast<char*>(buffer), size+padding)){
+		delete[] buffer;
+		std::cout<<"error write";
+		exit(3);
+	}
+
+	inputFile.close();
+	outputFile.close();
+
+	delete[] buffer;
+}
+
 void fileHandler::encryptFile(const std::string& path, const std::string& keyPath){
 	
 	std::ifstream inputFile(path, std::ios::binary);
@@ -196,6 +256,11 @@ void fileHandler::decryptFile(const std::string& path, const std::string& keyPat
 
 	delete[] key;
 	delete[] buffer;
+}
+
+// for directory decryption
+void fileHandler::decryptFile(const std::string& path, bool dirFlag, const std::string& keyPath){
+	
 }
 
 
@@ -401,25 +466,12 @@ bool fileHandler::createRootDir(){
 #endif
 }
 
-std::string fileHandler::parsePath(const std::string& filePath){
+std::string fileHandler::parsePath(const std::string& filePath, const std::string& path){
+
+	std::string relativePath = filePath.substr(path.size()-1);
+
 
 #ifdef _WIN32
-
-	std::filesystem::path p(filePath);
-	std::string outputPath;
-
-	auto index = std::find(p.begin(), p.end(), "work");
-	std::string t;
-
-	if(index != p.end()){
-		std::filesystem::path newP;
-
-		for(auto it = index; it != p.end(); ++it){
-			newP /= *it;
-		}
-
-		t = newP.string();
-	}
 
 	const char* homeDir = std::getenv("USERPROFILE");
 
@@ -430,28 +482,13 @@ std::string fileHandler::parsePath(const std::string& filePath){
 
 	std::string targetFolder = std::string(homeDir) + "\\Downloads\\target\\";
 
-	std::cout<<filePath<<std::endl;
 
-	return outputPath;
+	return targetFolder+"\\"+relativePath;
 
 
 #else
 
-	std::filesystem::path p(filePath);
 	std::string outputPath;
-
-	auto index = std::find(p.begin(), p.end(), "work");
-	std::string t;
-
-	if(index != p.end()){
-		std::filesystem::path newP;
-
-		for(auto it = index; it != p.end(); ++it){
-			newP /= *it;
-		}
-
-		t = newP.string();
-	}
 
 	const char* homeDir = std::getenv("HOME");
 
@@ -462,12 +499,24 @@ std::string fileHandler::parsePath(const std::string& filePath){
 
 	std::string targetFolder = std::string(homeDir) + "/Downloads/target/";
 
-	outputPath = targetFolder+t;
+	outputPath = targetFolder+relativePath;
 
 	return outputPath;
 
 #endif
-
-	
-
 }
+
+void fileHandler::constructPath(const std::string& filePath){
+	std::filesystem::path t(filePath);
+
+	std::string temp = t.parent_path();
+
+	temp += "/";
+
+	std::cout<<t<<std::endl;
+	std::cout<<temp<<std::endl;
+
+
+	std::filesystem::create_directory(temp);
+}
+

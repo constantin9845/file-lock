@@ -68,10 +68,13 @@ int main(int argc, char const *argv[]){
 			//  get root directory
 			std::string parentDir = path.substr(0, path.size()-1);
 
+			// generate key
+			unsigned char* key = fileHandler::genKey();
 
 			// create new root dir / REPLACES EXISTING ONE
 			if(!fileHandler::createRootDir()){
 				std::cout<<"Could not create target Directory.";
+				delete[] key;
 				exit(3);
 			}
 			
@@ -80,28 +83,34 @@ int main(int argc, char const *argv[]){
 
 				// iterate each file/dir
 				for(const auto& entry : std::filesystem::recursive_directory_iterator(parentDir)){
+					
 					if(std::filesystem::is_regular_file(entry) && entry.path().filename().string().front() != '.'){
 						
 						
 						// parse new path for current file
-						std::string currentFile = fileHandler::parsePath(entry.path().string());
+						std::string currentFile = fileHandler::parsePath(entry.path().string(), path);
 						if(currentFile == "."){
 							std::cout<<"could not parse file path";
+							delete[] key;
 							exit(3);
 						}
 						
 						// recreate path inside target folder
-						std::cout<<fileHandler::parsePath(entry.path().string())<<std::endl;
+						std::string newPath = fileHandler::parsePath(entry.path().string(), path);
+
+						fileHandler::constructPath(newPath);
 
 						// encrypt file
-						//fileHandler::encryptFile(entry.path().string(), dirFlag);
+						fileHandler::encryptFile(entry.path().string(), newPath, dirFlag, key);
 					}
 				}
+				fileHandler::storeKey(key);
+				delete[] key;
 			}
 		}
 		// directory decryption
 		else if(!directionFlag && dirFlag){
-
+			
 		}
 		else{
 			// iterate directory;
@@ -112,7 +121,6 @@ int main(int argc, char const *argv[]){
 		std::cout<<"else";
 		invalid();
 	}
-
 
 	return 0;
 }

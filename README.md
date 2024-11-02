@@ -3,13 +3,21 @@ Encrypt individual files using the AES block cipher
 
 ### To Do
 
-- implement directory encryption
-- Debug file path parsing on WIN -> * symbol causing issues, change to empty filename
--- Linux keeps star symbol
-- add encryotion files to directory function
+- problem with '.'directories?
+- Add documentation
+-implement decryption of directory
+
+- add encryption files to directory function
 
 - directory enc can have new key for each file or use single key
 - accept file with keys for directory enc/dec
+
+### Path parsing for directory enc/dec
+
+- take initial path passed into program
+- compare to current file
+- remove common part
+
 
 ### Directory enc/dec process
 

@@ -22,10 +22,17 @@ public:
 	//static void decryptDirectory();
 
 	static void encryptFile(const std::string& path);
-	//static void encryptFile(const std::string& path, bool dirFlag);
+
+	// for directory encryption
+	static void encryptFile(const std::string& path, const std::string& outputPath ,bool dirFlag, unsigned char* key);
+
 	static void encryptFile(const std::string& path, const std::string& keyPath);
 	
 	static void decryptFile(const std::string& path, const std::string& keyPath);
+
+	// for directory decryption
+	static void decryptFile(const std::string& path, bool dirFlag, const std::string& keyPath);
+
 
 	static unsigned char* genKey();
 
@@ -39,7 +46,9 @@ public:
 
 	static bool createRootDir();
 
-	static std::string parsePath(const std::string& filePath);
+	static std::string parsePath(const std::string& filePath, const std::string& path);
+
+	static void constructPath(const std::string& filePath);
 
 private:
 	
