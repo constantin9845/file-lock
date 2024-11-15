@@ -1,3 +1,6 @@
+#ifndef AES_H
+#define AES_H
+
 #include <iostream>
 #include <bitset>
 
@@ -193,4 +196,6 @@ const unsigned char INVERSE_MIXCOL_MATRIX [4][4] = {
     {0x0B, 0x0D, 0x09, 0x0E}
 };
 
+
+#endif
 
