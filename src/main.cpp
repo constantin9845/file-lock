@@ -8,13 +8,14 @@ void invalid(){
 
 int main(int argc, char const *argv[]){
 	
-	// valid number of arguments
+	// Check for valid number of arguments
 	if(argc == 3 || argc == 4){
 		bool directionFlag, ownKey = false, dirFlag;
 		std::string path; 
 		std::string keyPath;
 
-		// Parse and check if options valid
+		// Parse arguments 
+		// Check if arguments are valid
 		if(std::string(argv[1]).size() < 1){ std::cout<<"1"<<std::endl; invalid(); }
 		if(std::string(argv[2]) != "-enc" && std::string(argv[2]) != "-dec"){ std::cout<<"2"<<std::endl; invalid(); }
 
@@ -29,14 +30,14 @@ int main(int argc, char const *argv[]){
 
 #ifdef _WIN32
 
-		// Check if single file or directory
+		// Check if single file or directory - WIN
 		std::string star = fileHandler::getFileName(path);
 
 		// set directory flag
 		if(star.size() == 0){ dirFlag = true; }else{ dirFlag = false; }
 
 #else
-		// Check if single file or directory
+		// Check if single file or directory - UNIX
 		std::string star = fileHandler::getFileName(path);
 
 		// set directory flag
@@ -45,10 +46,12 @@ int main(int argc, char const *argv[]){
 
 		// single file encryption
 		if(directionFlag && !dirFlag){
+			// User key used
 			if(ownKey){
 				fileHandler::encryptFile(path, keyPath);
 				std::cout<<"Find encryted file in Downloads folder"<<std::endl;
 			}
+			// Key generated
 			else{
 				fileHandler::encryptFile(path);
 				std::cout<<"Find Key/IV and encryted file in Downloads folder"<<std::endl;
@@ -67,25 +70,26 @@ int main(int argc, char const *argv[]){
 		// directory encryption
 		else if(directionFlag && dirFlag){
 
-			//  get root directory
+			//  construct relative root directory
 			std::string parentDir = path.substr(0, path.size()-1);
 
 			// generate key
 			unsigned char* key = fileHandler::genKey();
 
-			// create new root dir / REPLACES EXISTING ONE
+			// create new root dir / REPLACES EXISTING ONE (target dir in Downloads)
 			if(!fileHandler::createRootDir()){
 				std::cout<<"Could not create target Directory.";
 				delete[] key;
 				exit(3);
 			}
 			
-			// check if dir exists and if valid dir
+			// check if dir exists and if valid
 			if(std::filesystem::exists(parentDir) && std::filesystem::is_directory(parentDir)){
 
 				// iterate each file/dir
 				for(const auto& entry : std::filesystem::recursive_directory_iterator(parentDir)){
-					
+
+					// skip hidden files
 					if(std::filesystem::is_regular_file(entry) && entry.path().filename().string().front() != '.'){
 						
 						
@@ -97,23 +101,25 @@ int main(int argc, char const *argv[]){
 							exit(3);
 						}
 						
-						// recreate path inside target folder
+						// construct path inside target directory
 						std::string newPath = fileHandler::parsePath(entry.path().string(), path);
 
+						// construct the path
 						fileHandler::constructPath(newPath);
 
 						// encrypt file
 						fileHandler::encryptFile(entry.path().string(), newPath, dirFlag, key);
 					}
 				}
-				fileHandler::storeKey(key);
+				fileHandler::storeKey(key); // store the new key with the file
 				delete[] key;
 			}
 		}
 
 		// directory decryption
 		else if(!directionFlag && dirFlag){
-			//  get root directory
+			
+			//  construct relative root directory
 			std::string parentDir = path.substr(0, path.size()-1);
 
 
@@ -122,7 +128,8 @@ int main(int argc, char const *argv[]){
 
 				// iterate each file/dir
 				for(const auto& entry : std::filesystem::recursive_directory_iterator(parentDir)){
-					
+
+					// skp hidden files
 					if(std::filesystem::is_regular_file(entry) && entry.path().filename().string().front() != '.' && entry.path().filename().string() != "_key"){
 						
 						
