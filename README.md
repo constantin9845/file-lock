@@ -4,8 +4,7 @@ Encrypt individual files using the AES block cipher
 
 ### To Do
 
-- Directory decryption implemented:
-- Verify directory decryption on WIN -> output path function probably needs edit
+- Implement : user decides target forled or straight replacement (add warning)
 - Implement target directory choice for encryption (replace or downloads folder)
 
 - directory enc can have new key for each file or use single key
