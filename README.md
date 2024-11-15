@@ -1,57 +1,64 @@
 # file-lock
 Encrypt individual files using the AES block cipher
 
+
 ### To Do
 
 - Directory decryption implemented:
--- Verify directory decryption on WIN -> output path function probably needs edit
--- DOCUMENTATION
--- Implement target choice for encryption (replace or downloads folder)
+- Verify directory decryption on WIN -> output path function probably needs edit
+- Implement target directory choice for encryption (replace or downloads folder)
 
 - directory enc can have new key for each file or use single key
 - accept file with keys for directory enc/dec
 
-### Path parsing for directory enc/dec
 
-- take initial path passed into program
-- compare to current file
-- remove common part
+### Program Description
 
+The program encrypts/decrypts a single file or every file for a given directory
+- Hidden files are skipped!
 
-### Directory enc/dec process
+Encryption can be done with a user key or a key will be generated
+- Key should be stored in a file -> the first 16 bytes are read
 
-- iterate files -> pass to enc/dec function
-- sub dirs? path module can iterate -> need to recreate file structure in original/target folder
--- subdirectories relative to input directory need to be recreated before file is saved
+A key generated -> stored together with the encrypted file(s)
 
 
-### user interaction
--> bash script:
-- ./run <path> -enc/dec -<key>(optional)
+#### Input exmaple
+
+```bash
+# Compile
+./run.sh
+
+# Single file Encryption
+./enc "<Path to file>" -enc "<path to key file>"(optional)
+
+# Encrypt entire directory
+
+## UNIX -> *
+./enc "/path/*" -enc "<path to key file>"(optional)
 
 
-- AFTER ENC : to downloads/target/ :
-	 file w/ key and IV / 
-	 if -r -> encrypted file as well
+## WIN -> /empty
+./enc "/path/" -enc "<path to key file>"(optional)
 
 
-
-### program process
--> select file
--> read in binary format 
-
- - number of bits must be a multiple of 128 for AES -> needs padding
- - keep track of size padding -> for decryption
-
- - Trivium -> no specific size but -> converts text to boolean vector 
- - need to add function to trivium class to take raw bytes as input
-
--> encrypt 
--> return as (corrupted file) 
+# Decrypt File
+./enc "<Path to file>" -dec "<path to key file>"(required)
 
 
-- options
+# Decrypt directory
 
--> encrypt file / all files in given dir
--> generate keys IVs
--> decrypt above
+## UNIX -> *
+./enc "/path/*" -dec "<path to key file>"(required)
+
+
+## WIN -> /empty
+./enc "/path/" -dec "<path to key file>"(reduired)
+
+```
+
+## Caution
+- When files are decrypted -> output files replace input files!
+- No recovery without key that was used for encryption -> to not modify key file
+- Preferably DO NOT OPEN key file -> set read only mode
+
