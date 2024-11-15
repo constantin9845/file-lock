@@ -56,12 +56,14 @@ int main(int argc, char const *argv[]){
 
 			return 0;
 		}
+
 		// single file decryption
 		else if(!directionFlag && !dirFlag){
 			fileHandler::decryptFile(path, keyPath);
-			std::cout<<"Find decrypted file in Downloads folder"<<std::endl;
+			std::cout<<"File has been decrypted"<<std::endl;
 			return 0;
 		}
+
 		// directory encryption
 		else if(directionFlag && dirFlag){
 
@@ -108,12 +110,36 @@ int main(int argc, char const *argv[]){
 				delete[] key;
 			}
 		}
+
 		// directory decryption
 		else if(!directionFlag && dirFlag){
-			
+			//  get root directory
+			std::string parentDir = path.substr(0, path.size()-1);
+
+
+			// check if dir exists and if valid dir
+			if(std::filesystem::exists(parentDir) && std::filesystem::is_directory(parentDir)){
+
+				// iterate each file/dir
+				for(const auto& entry : std::filesystem::recursive_directory_iterator(parentDir)){
+					
+					if(std::filesystem::is_regular_file(entry) && entry.path().filename().string().front() != '.' && entry.path().filename().string() != "_key"){
+						
+						
+						// parse new path for current file
+						std::string currentFile = fileHandler::parsePath(entry.path().string(), path);
+						if(currentFile == "."){
+							std::cout<<"could not parse file path";
+							exit(3);
+						}
+
+						// encrypt file
+						fileHandler::decryptFile(entry.path().string(), keyPath);
+					}
+				}
+			}
 		}
 		else{
-			// iterate directory;
 			return 0;
 		}
 	}

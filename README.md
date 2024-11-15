@@ -3,11 +3,10 @@ Encrypt individual files using the AES block cipher
 
 ### To Do
 
-- problem with '.'directories?
-- Add documentation
--implement decryption of directory
-
-- add encryption files to directory function
+- Directory decryption implemented:
+-- Verify directory decryption on WIN -> output path function probably needs edit
+-- DOCUMENTATION
+-- Implement target choice for encryption (replace or downloads folder)
 
 - directory enc can have new key for each file or use single key
 - accept file with keys for directory enc/dec

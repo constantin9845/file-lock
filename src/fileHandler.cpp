@@ -194,9 +194,13 @@ void fileHandler::decryptFile(const std::string& path, const std::string& keyPat
 	
 	std::ifstream inputFile(path, std::ios::binary);
 
-	std::string outputPath = getOutputPath(getFileName(path).substr(1), false);
+	std::string outputPath = getDecryptionFileName(path);
 
-	std::ofstream outputFile(outputPath, std::ios::binary);
+	std::filesystem::path p(outputPath);
+	std::cout<<"******";
+	std::cout<<p.string();
+	std::cout<<"******";
+
 
 	if(!inputFile){
 		std::cout<<"Error opening file.";
@@ -244,6 +248,14 @@ void fileHandler::decryptFile(const std::string& path, const std::string& keyPat
 
 	}
 
+
+	// delete old encrypted file
+	inputFile.close();
+	std::filesystem::remove(outputPath);
+
+	std::ofstream outputFile(outputPath, std::ios::binary);
+
+
 	// padding needs to be ignored!
 	if(!outputFile.write(reinterpret_cast<char*>(buffer), size)){
 		delete[] buffer;
@@ -251,17 +263,12 @@ void fileHandler::decryptFile(const std::string& path, const std::string& keyPat
 		exit(3);
 	}
 
-	inputFile.close();
 	outputFile.close();
 
 	delete[] key;
 	delete[] buffer;
 }
 
-// for directory decryption
-void fileHandler::decryptFile(const std::string& path, bool dirFlag, const std::string& keyPath){
-	
-}
 
 
 std::string fileHandler::getFileName(const std::string& filePath){
@@ -269,6 +276,16 @@ std::string fileHandler::getFileName(const std::string& filePath){
 	std::filesystem::path path(filePath);
 	std::string fileName = path.filename().string();
 	return fileName;
+}
+
+std::string fileHandler::getDecryptionFileName(const std::string& filePath){
+	// extract file name from file path
+	std::filesystem::path path(filePath);
+	std::string fileName = path.filename().string();
+
+	std::string newName = path.parent_path().string() + "/" +fileName;
+
+	return newName;
 }
 
 std::string fileHandler::getOutputPath(const std::string& fileName, bool deleteOld){
@@ -287,8 +304,6 @@ std::string fileHandler::getOutputPath(const std::string& fileName, bool deleteO
 	std::string targetFolder = std::string(homeDir) + "\\Downloads\\target\\";
 	std::string outputPath = targetFolder+fileName;
 
-	// WINDOWS needs other way of handling directories
-	// current solution throws exception -> access denied
 	if(deleteOld){
 		if(std::filesystem::exists(targetFolder)){
 			std::filesystem::remove_all(targetFolder);
@@ -512,10 +527,6 @@ void fileHandler::constructPath(const std::string& filePath){
 	std::string temp = t.parent_path();
 
 	temp += "/";
-
-	std::cout<<t<<std::endl;
-	std::cout<<temp<<std::endl;
-
 
 	std::filesystem::create_directory(temp);
 }
