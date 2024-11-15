@@ -221,6 +221,7 @@ void fileHandler::decryptFile(const std::string& path, const std::string& keyPat
 	// create output path -> same as input
 	std::string outputPath = getDecryptionFileName(path);
 
+
 	if(!inputFile){
 		std::cout<<"Error opening file.";
 		exit(2);
@@ -271,7 +272,7 @@ void fileHandler::decryptFile(const std::string& path, const std::string& keyPat
 
 	// delete old encrypted file
 	inputFile.close();
-	std::filesystem::remove(outputPath);
+	std::filesystem::remove(path);
 
 	// output stream
 	std::ofstream outputFile(outputPath, std::ios::binary);
@@ -299,14 +300,23 @@ std::string fileHandler::getFileName(const std::string& filePath){
 	return fileName;
 }
 
-// return path of current file
+// return path of current file and remove _ in name
 std::string fileHandler::getDecryptionFileName(const std::string& filePath){
+
+	std::string newName;
+
 	// extract file name from file path
 	std::filesystem::path path(filePath);
 	std::string fileName = path.filename().string();
 
-	std::string newName = path.parent_path().string() + "/" +fileName;
+#ifdef _WIN32
+	newName = path.parent_path().string() + "\\" +fileName;
+#else
 
+	newName = path.parent_path().string() + "/" +fileName;
+
+
+#endif
 	return newName;
 }
 
@@ -538,10 +548,10 @@ std::string fileHandler::parsePath(const std::string& filePath, const std::strin
         exit(1);
 	}
 
-	std::string targetFolder = std::string(homeDir) + "\\Downloads\\target\\";
+	std::string targetFolder = std::string(homeDir) + "\\Downloads\\target";
 
 
-	return targetFolder+"\\"+relativePath;
+	return targetFolder+relativePath;
 
 
 #else
@@ -569,10 +579,16 @@ std::string fileHandler::parsePath(const std::string& filePath, const std::strin
 void fileHandler::constructPath(const std::string& filePath){
 	std::filesystem::path t(filePath);
 
-	std::string temp = t.parent_path();
+	std::string temp = t.parent_path().string();
 
+
+#ifdef _WIN32
+	temp+= "\\";
+#else
 	temp += "/";
+#endif
 
-	std::filesystem::create_directory(temp);
+	std::filesystem::create_directories(temp);
+
 }
 

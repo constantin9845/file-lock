@@ -7,7 +7,7 @@ void invalid(){
 
 
 int main(int argc, char const *argv[]){
-	
+
 	// Check for valid number of arguments
 	if(argc == 3 || argc == 4){
 		bool directionFlag, ownKey = false, dirFlag;
@@ -100,6 +100,7 @@ int main(int argc, char const *argv[]){
 							delete[] key;
 							exit(3);
 						}
+
 						
 						// construct path inside target directory
 						std::string newPath = fileHandler::parsePath(entry.path().string(), path);
