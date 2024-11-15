@@ -1,11 +1,15 @@
 #include "../include/fileHandler.h"
 
+// Encrypt single file
 void fileHandler::encryptFile(const std::string& path){
-	
+
+	// input file stream
 	std::ifstream inputFile(path, std::ios::binary);
 
+	// construct output file path
 	std::string outputPath = getOutputPath("_"+getFileName(path), true);
 
+	// output file stream
 	std::ofstream outputFile(outputPath, std::ios::binary);
 
 	if(!inputFile){
@@ -31,8 +35,10 @@ void fileHandler::encryptFile(const std::string& path){
 		exit(2);
 	}
 
+	// generate 128 bit key
 	unsigned char* key = genKey();
 
+	// encrypt data in buffer
 	for(int i = 0; i < size+padding; i+=16){
 		unsigned char temp[16];
 		unsigned char tempResult[16];
@@ -51,12 +57,14 @@ void fileHandler::encryptFile(const std::string& path){
 
 	}
 
+	// write encrypted data to output file
 	if(!outputFile.write(reinterpret_cast<char*>(buffer), size+padding)){
 		delete[] buffer;
 		std::cout<<"error write";
 		exit(3);
 	}
 
+	// store new key together with file
 	storeKey(key);
 
 	inputFile.close();
@@ -66,10 +74,14 @@ void fileHandler::encryptFile(const std::string& path){
 	delete[] buffer;
 }
 
+// Function encrypts a file but is used for full directory encryption
+// uses user provided key
 void fileHandler::encryptFile(const std::string& path, const std::string& outputPath, bool dirFlag, unsigned char* key){
 
+	// input stream
 	std::ifstream inputFile(path, std::ios::binary);
 
+	// output stream
 	std::ofstream outputFile(outputPath, std::ios::binary);
 
 	if(!inputFile){
@@ -96,6 +108,7 @@ void fileHandler::encryptFile(const std::string& path, const std::string& output
 		exit(2);
 	}
 
+	// encrypt data in the buffer
 	for(int i = 0; i < size+padding; i+=16){
 		unsigned char temp[16];
 		unsigned char tempResult[16];
@@ -114,6 +127,7 @@ void fileHandler::encryptFile(const std::string& path, const std::string& output
 
 	}
 
+	// write data to output file
 	if(!outputFile.write(reinterpret_cast<char*>(buffer), size+padding)){
 		delete[] buffer;
 		std::cout<<"error write";
@@ -126,12 +140,15 @@ void fileHandler::encryptFile(const std::string& path, const std::string& output
 	delete[] buffer;
 }
 
+// Encrypt file with user provided key
 void fileHandler::encryptFile(const std::string& path, const std::string& keyPath){
-	
+	// input stream
 	std::ifstream inputFile(path, std::ios::binary);
 
+	// construct output path
 	std::string outputPath = getOutputPath("_"+getFileName(path), true);
 
+	// output stream
 	std::ofstream outputFile(outputPath, std::ios::binary);
 
 	if(!inputFile){
@@ -157,8 +174,10 @@ void fileHandler::encryptFile(const std::string& path, const std::string& keyPat
 		exit(2);
 	}
 
+	// generate key
 	unsigned char* key = readKey(keyPath);
 
+	// encrypt buffer
 	for(int i = 0; i < size+padding; i+=16){
 		unsigned char temp[16];
 		unsigned char tempResult[16];
@@ -177,6 +196,7 @@ void fileHandler::encryptFile(const std::string& path, const std::string& keyPat
 
 	}
 
+	// write data to output file
 	if(!outputFile.write(reinterpret_cast<char*>(buffer), size+padding)){
 		delete[] buffer;
 		std::cout<<"error write";
@@ -190,17 +210,16 @@ void fileHandler::encryptFile(const std::string& path, const std::string& keyPat
 	delete[] buffer;
 }
 
+// Decrypt single file
+// Requires user key
+// replaces input file
 void fileHandler::decryptFile(const std::string& path, const std::string& keyPath){
-	
+
+	// input stream
 	std::ifstream inputFile(path, std::ios::binary);
 
+	// create output path -> same as input
 	std::string outputPath = getDecryptionFileName(path);
-
-	std::filesystem::path p(outputPath);
-	std::cout<<"******";
-	std::cout<<p.string();
-	std::cout<<"******";
-
 
 	if(!inputFile){
 		std::cout<<"Error opening file.";
@@ -225,9 +244,10 @@ void fileHandler::decryptFile(const std::string& path, const std::string& keyPat
 		exit(2);
 	}
 
+	// read user provided key file
 	unsigned char* key = readKey(keyPath);
-
-  
+	
+  	// decrypt buffer
 	for(int i = 0; i < size; i+=16){
 		unsigned char temp[16];
 		unsigned char tempResult[16];
@@ -253,10 +273,11 @@ void fileHandler::decryptFile(const std::string& path, const std::string& keyPat
 	inputFile.close();
 	std::filesystem::remove(outputPath);
 
+	// output stream
 	std::ofstream outputFile(outputPath, std::ios::binary);
 
 
-	// padding needs to be ignored!
+	// write to output file
 	if(!outputFile.write(reinterpret_cast<char*>(buffer), size)){
 		delete[] buffer;
 		std::cout<<"error write";
@@ -270,7 +291,7 @@ void fileHandler::decryptFile(const std::string& path, const std::string& keyPat
 }
 
 
-
+// return filename given an absolute path
 std::string fileHandler::getFileName(const std::string& filePath){
 	// extract file name from file path
 	std::filesystem::path path(filePath);
@@ -278,6 +299,7 @@ std::string fileHandler::getFileName(const std::string& filePath){
 	return fileName;
 }
 
+// return path of current file
 std::string fileHandler::getDecryptionFileName(const std::string& filePath){
 	// extract file name from file path
 	std::filesystem::path path(filePath);
@@ -288,12 +310,15 @@ std::string fileHandler::getDecryptionFileName(const std::string& filePath){
 	return newName;
 }
 
+// construct output path
+// target directory in Downloads
 std::string fileHandler::getOutputPath(const std::string& fileName, bool deleteOld){
 
 // check OS
 // windows
 #ifdef _WIN32
 
+	// get user name
 	const char* homeDir = std::getenv("USERPROFILE");
 
 	if(homeDir == nullptr){
@@ -301,9 +326,11 @@ std::string fileHandler::getOutputPath(const std::string& fileName, bool deleteO
         exit(1);
 	}
 
+	// construct target folder path
 	std::string targetFolder = std::string(homeDir) + "\\Downloads\\target\\";
 	std::string outputPath = targetFolder+fileName;
 
+	// delete existing target directory
 	if(deleteOld){
 		if(std::filesystem::exists(targetFolder)){
 			std::filesystem::remove_all(targetFolder);
@@ -320,6 +347,7 @@ std::string fileHandler::getOutputPath(const std::string& fileName, bool deleteO
 // Mac/Linux
 #else
 
+	// get user name
 	const char* homeDir = std::getenv("HOME");
 
 	if(homeDir == nullptr){
@@ -331,6 +359,7 @@ std::string fileHandler::getOutputPath(const std::string& fileName, bool deleteO
 	std::string targetFolder = std::string(homeDir) + "/Downloads/target/";
 	std::string outputPath = targetFolder+fileName;
 
+	// delete existing directory
 	if(deleteOld){
 		if(std::filesystem::exists(targetFolder)){
 			std::filesystem::remove_all(targetFolder);
@@ -347,6 +376,7 @@ std::string fileHandler::getOutputPath(const std::string& fileName, bool deleteO
 #endif
 }
 
+// Generate 128 bit key
 unsigned char* fileHandler::genKey(){
 
 	unsigned char* buffer = new unsigned char[16];
@@ -389,6 +419,7 @@ unsigned char* fileHandler::genKey(){
 	return buffer;
 }
 
+// read key from key file
 unsigned char* fileHandler::readKey(const std::string& path){
 
 	unsigned char* buffer = new unsigned char[16];
@@ -412,6 +443,7 @@ unsigned char* fileHandler::readKey(const std::string& path){
 	return buffer;
 }
 
+// store key in key file
 void fileHandler::storeKey(unsigned char* key){
 
 	std::string outputPath = getOutputPath("_key", false);
@@ -431,11 +463,13 @@ void fileHandler::storeKey(unsigned char* key){
 	keyOutput.close();
 }
 
+// create target directory
 bool fileHandler::createRootDir(){
 	// check OS
 // windows
 #ifdef _WIN32
 
+	// get user name
 	const char* homeDir = std::getenv("USERPROFILE");
 
 	if(homeDir == nullptr){
@@ -443,12 +477,15 @@ bool fileHandler::createRootDir(){
         exit(1);
 	}
 
+	// construct path
 	std::string targetFolder = std::string(homeDir) + "\\Downloads\\target\\";
 
+	// delete if exists
 	if(std::filesystem::exists(targetFolder)){
 		std::filesystem::remove_all(targetFolder);
 	}
 
+	// create target directory
 	if(!std::filesystem::create_directory(targetFolder)){
 		return false;
 	}
@@ -458,6 +495,7 @@ bool fileHandler::createRootDir(){
 // Mac/Linux
 #else
 
+	// get user name
 	const char* homeDir = std::getenv("HOME");
 
 	if(homeDir == nullptr){
@@ -468,10 +506,12 @@ bool fileHandler::createRootDir(){
 	// create new folder to store file + key
 	std::string targetFolder = std::string(homeDir) + "/Downloads/target/";
 
+	// delete if already exists
 	if(std::filesystem::exists(targetFolder)){
 		std::filesystem::remove_all(targetFolder);
 	}
 
+	// create new target folder
 	if(!std::filesystem::create_directory(targetFolder)){
 		return false;
 	}
@@ -481,6 +521,8 @@ bool fileHandler::createRootDir(){
 #endif
 }
 
+
+// Given filapth create a relative path to Root directory in encryption directory
 std::string fileHandler::parsePath(const std::string& filePath, const std::string& path){
 
 	std::string relativePath = filePath.substr(path.size()-1);
@@ -488,6 +530,7 @@ std::string fileHandler::parsePath(const std::string& filePath, const std::strin
 
 #ifdef _WIN32
 
+	// get username
 	const char* homeDir = std::getenv("USERPROFILE");
 
 	if(homeDir == nullptr){
@@ -505,6 +548,7 @@ std::string fileHandler::parsePath(const std::string& filePath, const std::strin
 
 	std::string outputPath;
 
+	// get username
 	const char* homeDir = std::getenv("HOME");
 
 	if(homeDir == nullptr){
@@ -521,6 +565,7 @@ std::string fileHandler::parsePath(const std::string& filePath, const std::strin
 #endif
 }
 
+// create directory for provided path
 void fileHandler::constructPath(const std::string& filePath){
 	std::filesystem::path t(filePath);
 
