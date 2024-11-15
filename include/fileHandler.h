@@ -88,6 +88,9 @@ public:
 	// @param path absolute filepath
 	static std::string getFileName(const std::string& filePath);
 
+	// returns string for absolute path of file
+	static std::string getDecryptionFileName(const std::string& filePath);
+
 	// Constructs output path for Downloads/target/
 	// Used for single file encryption
 	// @param fileName name of file
