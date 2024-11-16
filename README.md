@@ -4,7 +4,6 @@ Encrypt individual files using the AES block cipher
 
 ### To Do
 
-- make file
 - Implement target directory choice for encryption (replace or downloads folder)
 
 - directory enc can have new key for each file or use single key
@@ -29,7 +28,58 @@ A key generated -> stored together with the encrypted file(s)
 - TXT file bug -> line of new line characters appended to initial text (probably padding issue) 
 
 
-#### Input exmaple
+### Build Guide
+
+#### 1. Create Build Directory
+
+- Navigate to project folder and create build directory
+```bash
+mkdir build
+cd build
+```
+
+#### 2. Generate Build Files
+Linux/mac
+```bash
+cmake ..
+```
+
+WIN
+```bash
+cmake .. -G "MinGW Makefiles"
+```
+
+#### 3. Build Project
+Linux/mac
+```bash
+cmake --build .
+```
+
+WIN
+```bash
+cmake --build . --config Release
+```
+
+#### 4. Installation
+
+##### With Root Privileges
+Linux/mac
+```bash
+sudo cmake --install .
+```
+
+WIN - Use Administrator Command Prompt
+```bash
+# Navigate to build directory
+cmake --install .
+```
+
+
+##### Without Root privileges
+Run program from Build folder
+
+
+### Examples
 
 ```bash
 # Compile
