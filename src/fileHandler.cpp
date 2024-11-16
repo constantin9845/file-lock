@@ -1,16 +1,21 @@
 #include "../include/fileHandler.h"
 
 // Encrypt single file
-void fileHandler::encryptFile(const std::string& path){
+void fileHandler::encryptFile(const std::string& path, bool replaceFlag){
 
 	// input file stream
 	std::ifstream inputFile(path, std::ios::binary);
 
-	// construct output file path
-	std::string outputPath = getOutputPath("_"+getFileName(path), true);
+	std::string outputPath;
 
-	// output file stream
-	std::ofstream outputFile(outputPath, std::ios::binary);
+	if(replaceFlag){
+		// create output path -> same as input
+		outputPath = getDecryptionFileName(path);
+	}
+	else{
+		// construct output file path
+		outputPath = getOutputPath("_"+getFileName(path), true);
+	}
 
 	if(!inputFile){
 		std::cout<<"Error opening file.";
@@ -57,6 +62,17 @@ void fileHandler::encryptFile(const std::string& path){
 
 	}
 
+	if(replaceFlag){
+		inputFile.close();
+		std::filesystem::remove(path);
+	}
+	else{
+		inputFile.close();
+	}
+
+	// output file stream
+	std::ofstream outputFile(outputPath, std::ios::binary);
+
 	// write encrypted data to output file
 	if(!outputFile.write(reinterpret_cast<char*>(buffer), size+padding)){
 		delete[] buffer;
@@ -67,7 +83,6 @@ void fileHandler::encryptFile(const std::string& path){
 	// store new key together with file
 	storeKey(key);
 
-	inputFile.close();
 	outputFile.close();
 
 	delete[] key;
@@ -141,7 +156,7 @@ void fileHandler::encryptFile(const std::string& path, const std::string& output
 }
 
 // Encrypt file with user provided key
-void fileHandler::encryptFile(const std::string& path, const std::string& keyPath){
+void fileHandler::encryptFile(const std::string& path, const std::string& keyPath, bool replaceFlag){
 	// input stream
 	std::ifstream inputFile(path, std::ios::binary);
 

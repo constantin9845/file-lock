@@ -9,8 +9,8 @@ void invalid(){
 int main(int argc, char const *argv[]){
 
 	// Check for valid number of arguments
-	if(argc == 3 || argc == 4){
-		bool directionFlag, ownKey = false, dirFlag;
+	if(argc >= 3 && argc <= 5){
+		bool directionFlag, ownKey = false, dirFlag, replaceFlag = false;
 		std::string path; 
 		std::string keyPath;
 
@@ -19,8 +19,28 @@ int main(int argc, char const *argv[]){
 		if(std::string(argv[1]).size() < 1){ std::cout<<"1"<<std::endl; invalid(); }
 		if(std::string(argv[2]) != "-enc" && std::string(argv[2]) != "-dec"){ std::cout<<"2"<<std::endl; invalid(); }
 
-		// Check for input key
+
+
+		// Check for input key or -r flag
 		if(argc == 4){
+			if(std::string(argv[3]) == "-r"){
+				replaceFlag = true;
+			}
+			else{
+				ownKey = false;
+				keyPath = argv[3];
+			}
+		}
+
+		if(argc == 5){
+			if(argv[4] == "-r"){
+				replaceFlag = true;
+			}
+			else{
+				std::cout<<"-r flag error";
+				invalid();
+			}
+
 			ownKey = true;
 			keyPath = argv[3];
 		}
@@ -48,12 +68,12 @@ int main(int argc, char const *argv[]){
 		if(directionFlag && !dirFlag){
 			// User key used
 			if(ownKey){
-				fileHandler::encryptFile(path, keyPath);
+				fileHandler::encryptFile(path, keyPath, replaceFlag);
 				std::cout<<"Find encryted file in Downloads folder"<<std::endl;
 			}
 			// Key generated
 			else{
-				fileHandler::encryptFile(path);
+				fileHandler::encryptFile(path, replaceFlag);
 				std::cout<<"Find Key/IV and encryted file in Downloads folder"<<std::endl;
 			}
 
