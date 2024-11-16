@@ -4,8 +4,11 @@ Encrypt individual files using the AES block cipher
 
 ### To Do
 
-- Implement target directory choice for encryption (replace or downloads folder)
+- Test Windows Building / linux works
+- Add disclaimer file
+- Release 1.0.0
 
+  
 - directory enc can have new key for each file or use single key
 - accept file with keys for directory enc/dec
 
