@@ -4,7 +4,7 @@ Encrypt individual files using the AES block cipher
 
 ### To Do
 
-- Implement : user decides target forled or straight replacement (add warning)
+- make file
 - Implement target directory choice for encryption (replace or downloads folder)
 
 - directory enc can have new key for each file or use single key
@@ -20,6 +20,13 @@ Encryption can be done with a user key or a key will be generated
 - Key should be stored in a file -> the first 16 bytes are read
 
 A key generated -> stored together with the encrypted file(s)
+
+### Verified File types
+
+- PDF PNG DOCX MP4
+
+- To fix:
+- TXT file bug -> line of new line characters appended to initial text (probably padding issue) 
 
 
 #### Input exmaple
