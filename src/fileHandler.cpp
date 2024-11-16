@@ -91,13 +91,16 @@ void fileHandler::encryptFile(const std::string& path, bool replaceFlag){
 
 // Function encrypts a file but is used for full directory encryption
 // uses user provided key
-void fileHandler::encryptFile(const std::string& path, const std::string& outputPath, bool dirFlag, unsigned char* key){
+void fileHandler::encryptFile(const std::string& path, std::string outputPath, bool dirFlag, unsigned char* key, bool replaceFlag){
 
 	// input stream
 	std::ifstream inputFile(path, std::ios::binary);
 
-	// output stream
-	std::ofstream outputFile(outputPath, std::ios::binary);
+
+	if(replaceFlag){
+		// create output path -> same as input
+		outputPath = getDecryptionFileName(path);
+	}
 
 	if(!inputFile){
 		std::cout<<"Error opening file.";
@@ -142,6 +145,18 @@ void fileHandler::encryptFile(const std::string& path, const std::string& output
 
 	}
 
+	if(replaceFlag){
+		inputFile.close();
+		std::filesystem::remove(path);
+	}
+	else{
+		inputFile.close();
+	}
+
+	// output file stream
+	std::ofstream outputFile(outputPath, std::ios::binary);
+
+	
 	// write data to output file
 	if(!outputFile.write(reinterpret_cast<char*>(buffer), size+padding)){
 		delete[] buffer;
@@ -149,7 +164,6 @@ void fileHandler::encryptFile(const std::string& path, const std::string& output
 		exit(3);
 	}
 
-	inputFile.close();
 	outputFile.close();
 
 	delete[] buffer;
@@ -160,11 +174,16 @@ void fileHandler::encryptFile(const std::string& path, const std::string& keyPat
 	// input stream
 	std::ifstream inputFile(path, std::ios::binary);
 
-	// construct output path
-	std::string outputPath = getOutputPath("_"+getFileName(path), true);
+	std::string outputPath;
 
-	// output stream
-	std::ofstream outputFile(outputPath, std::ios::binary);
+	if(replaceFlag){
+		// create output path -> same as input
+		outputPath = getDecryptionFileName(path);
+	}
+	else{
+		// construct output file path
+		outputPath = getOutputPath("_"+getFileName(path), true);
+	}
 
 	if(!inputFile){
 		std::cout<<"Error opening file.";
@@ -211,6 +230,17 @@ void fileHandler::encryptFile(const std::string& path, const std::string& keyPat
 
 	}
 
+	if(replaceFlag){
+		inputFile.close();
+		std::filesystem::remove(path);
+	}
+	else{
+		inputFile.close();
+	}
+
+	// output file stream
+	std::ofstream outputFile(outputPath, std::ios::binary);
+
 	// write data to output file
 	if(!outputFile.write(reinterpret_cast<char*>(buffer), size+padding)){
 		delete[] buffer;
@@ -218,7 +248,6 @@ void fileHandler::encryptFile(const std::string& path, const std::string& keyPat
 		exit(3);
 	}
 
-	inputFile.close();
 	outputFile.close();
 
 	delete[] key;

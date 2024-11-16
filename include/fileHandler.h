@@ -29,7 +29,7 @@ public:
 	    Output into Downloads/target/ with encrypted file + key file
      	    @param path absolute filepath
 	*/
-	static void encryptFile(const std::string& path);
+	static void encryptFile(const std::string& path, bool replaceFlag);
 
 	/*
 	    Encrypts all files in specified directory (includes subdirectory files)
@@ -40,7 +40,7 @@ public:
 	    @param dirFlag specifies directory 
       	    @param key 128 bit key
 	*/
-	static void encryptFile(const std::string& path, const std::string& outputPath ,bool dirFlag, unsigned char* key);
+	static void encryptFile(const std::string& path, std::string outputPath ,bool dirFlag, unsigned char* key, bool replaceFlag);
 
 	/*
 	    Encrypt single file with user provided key
@@ -49,7 +49,7 @@ public:
 	    @param path absolute filepath
      	    @param keyPath absolute path of key file
 	*/
-	static void encryptFile(const std::string& path, const std::string& keyPath);
+	static void encryptFile(const std::string& path, const std::string& keyPath, bool replaceFlag);
 
 	/*
 	    Decrypt single file with user provided key

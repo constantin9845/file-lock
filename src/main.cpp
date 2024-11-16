@@ -33,7 +33,7 @@ int main(int argc, char const *argv[]){
 		}
 
 		if(argc == 5){
-			if(argv[4] == "-r"){
+			if(std::string(argv[4]) == "-r"){
 				replaceFlag = true;
 			}
 			else{
@@ -121,15 +121,19 @@ int main(int argc, char const *argv[]){
 							exit(3);
 						}
 
-						
-						// construct path inside target directory
-						std::string newPath = fileHandler::parsePath(entry.path().string(), path);
+						std::string newPath;
 
-						// construct the path
-						fileHandler::constructPath(newPath);
+						if(!replaceFlag){
+							// construct path inside target directory
+							newPath = fileHandler::parsePath(entry.path().string(), path);
+
+							// construct the path
+							fileHandler::constructPath(newPath);
+						}
 
 						// encrypt file
-						fileHandler::encryptFile(entry.path().string(), newPath, dirFlag, key);
+						fileHandler::encryptFile(entry.path().string(), newPath, dirFlag, key, replaceFlag);
+						
 					}
 				}
 				fileHandler::storeKey(key); // store the new key with the file
