@@ -81,9 +81,9 @@ Run program from Build folder
 
 ### Examples
 
+
 ```bash
-# Compile
-./run.sh
+
 
 # Single file Encryption
 ./enc "<Path to file>" -enc "<path to key file>"(optional)
