@@ -194,7 +194,7 @@ void AES::inverseApplyKey(unsigned char state[4][4], unsigned int* k, int keyInd
 
 
 //128 Key scheduler
-unsigned int* AES::genKey(unsigned char* K){
+unsigned int* AES::genKey(unsigned char K[]){
 
 	// will store 4 bytes in each element
 	unsigned int* W = new unsigned int[44];
@@ -373,7 +373,7 @@ unsigned char AES::GFmultiply(unsigned char b, unsigned char temp){
 	}
 }
 
-void AES::encrypt(unsigned char input[], unsigned char out[], unsigned char* KEY){
+void AES::encrypt(unsigned char input[], unsigned char out[], unsigned char KEY[]){
 
 	// stores ciphertext
 	unsigned char state[4][4];
@@ -432,7 +432,7 @@ void AES::encrypt(unsigned char input[], unsigned char out[], unsigned char* KEY
 }
 
 
-void AES::decrypt(unsigned char input[], unsigned char out[], unsigned char* KEY){
+void AES::decrypt(unsigned char input[], unsigned char out[], unsigned char KEY[]){
 	/*
 	Structure
 	1. key addition
@@ -491,11 +491,131 @@ void AES::decrypt(unsigned char input[], unsigned char out[], unsigned char* KEY
 	}
 }
 
-/*
-unsigned char AES::stringToHex(char &a, char &b){
+
+void AES::encryptCBC(unsigned char input[], unsigned char out[], unsigned char KEY[], unsigned char* IV){
+
+	// stores ciphertext
+	unsigned char state[4][4];
+
+	// Generate key schedule
+	unsigned int* k = genKey(KEY);
+	int keyIndex = 0;
+
+	// load state
+	for(int i = 0; i < 4; i++){
+		for(int j = 0; j < 4; j++){
+			state[i][j] = input[i + 4 * j];
+		}
+	}
+
+	// Key whitening
+	applyKey(state, k, keyIndex);
+
+
+	// ROUND 1
+	// X XOR IV
+	int indexIV = 0;
+	for(int i = 0; i < 4; i++){
+		for(int j = 0; j < 4; j++){
+			state[i][j] = state[i][j] ^ IV[indexIV++];
+		}
+	}
+
+	byteSub(state);
+	shiftRow(state);
+	mixCol(state);
+	applyKey(state, k, keyIndex);
+
+	// perform ROUNDS 2 to 9
+	for(int i = 1; i < 9; i++){
+
+		byteSub(state);
+		shiftRow(state);
+		mixCol(state);
+		applyKey(state, k, keyIndex);
+	}
+
+	// perform round 10 without mixing columns
+	byteSub(state);
+
+	shiftRow(state);
+	applyKey(state, k, keyIndex);
+
+	delete[] k;
+	k = nullptr;
+
+	// store state in output
+	int index = 0;
+	for(int i = 0; i < 4; i++){
+		for(int j = 0; j < 4; j++){
+			out[index++] = state[j][i];
+		}
+	}
 }
 
-unsigned char* AES::randomKey(){
-	// 22789a21e924d77f22affc07a0b8e7e1
+
+void AES::decryptCBC(unsigned char input[], unsigned char out[], unsigned char KEY[], unsigned char* IV){
+	/*
+	Structure
+	0. XOR input with IV/previous output
+	1. key addition
+	2. Inverse Mix column layer (except round 1)
+	3. Inverse Shift row layer
+	4. inverse Byte Sub
+	*/
+
+	int ROUND = 10;
+
+	// stores plain text
+	unsigned char* Y = new unsigned char[16];
+	unsigned char state[4][4];
+
+	// load state
+	for(int i = 0; i < 4; i++){
+		for(int j = 0; j < 4; j++){
+			state[i][j] = input[i + 4 * j];
+		}
+	}
+
+	// Generate key schedule
+	unsigned int* k = genKey(KEY);
+
+
+	// Perform round 1 - without mix col layer
+	inverseApplyKey(state, k, (ROUND--)*4);
+	inverseByteSub(state);
+	inverseShiftRow(state);
+
+
+	// perform remaining rounds
+	for(int i = 1; i < 10; i++){
+		inverseApplyKey(state, k, (ROUND--)*4);
+		inverseMixCol(state);
+		inverseByteSub(state);
+		inverseShiftRow(state);
+	}
+
+	inverseApplyKey(state, k, (ROUND--)*4);
+
+	// ADD IV to Input
+	int indexIV = 0;
+	for(int i = 0; i < 4; i++){
+		for(int j = 0; j < 4; j++){
+			state[i][j] = state[i][j] ^ IV[indexIV++];
+		}
+	}
+
+	delete[] k;
+	k = nullptr;
+
+	// store state in output
+	int index = 0;
+	for(int i = 0; i < 4; i++){
+		for(int j = 0; j < 4; j++){
+			out[index++] = state[j][i];
+		}
+	}
 }
-*/
+
+
+

@@ -4,6 +4,7 @@ Encrypt individual files using the AES block cipher
 
 ### To Do
 
+- Remove '_' from file name when decrypting single file
 - Test Windows Building / linux works
 - Add disclaimer file
 - Release 1.0.0

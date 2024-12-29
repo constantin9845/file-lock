@@ -31,7 +31,7 @@ void fileHandler::encryptFile(const std::string& path, bool replaceFlag){
 	std::streamsize padding = 16-(size%16);
 
 	// array to store bytes 
-	unsigned char* buffer = new unsigned char[size+padding];
+	unsigned char* buffer = new unsigned char[size+padding+16];
 
 	// read data into buffer
 	if(!inputFile.read(reinterpret_cast<char*>(buffer),size)){
@@ -40,10 +40,14 @@ void fileHandler::encryptFile(const std::string& path, bool replaceFlag){
 		exit(2);
 	}
 
+	// generate IV
+	unsigned char* IV = genKey();
+
 	// generate 128 bit key
 	unsigned char* key = genKey();
 
-	// encrypt data in buffer
+	// ENCRYPTION OF FIRST BLOCK USES IV
+	// REST OF ENCRYPTION USES PREVIOUS BLOCK OUTPUT
 	for(int i = 0; i < size+padding; i+=16){
 		unsigned char temp[16];
 		unsigned char tempResult[16];
@@ -52,14 +56,34 @@ void fileHandler::encryptFile(const std::string& path, bool replaceFlag){
 		for(int j = 0, index = i; j < 16; j++, index++){
 			temp[j] = buffer[index];
 		}
-		
-		AES::encrypt(temp, tempResult, key);
+
+		// first block -> IV
+		if(i == 0){
+			AES::encryptCBC(temp, tempResult, key, IV);
+		}
+		else{
+
+			// get previous output
+			unsigned char* prev = new unsigned char[16];
+			for(int l = i-16, s = 0; l < i; l++, s++){
+				prev[s] = buffer[l];
+			}
+
+			AES::encryptCBC(temp, tempResult, key, prev);
+			delete[] prev;
+		}
 
 		// store encrypted back in buffer
 		for(int j = 0, index = i; j < 16; j++, index++){
 			buffer[index] = tempResult[j];
 		}
 
+	}
+
+
+	// Store IV at end of buffer
+	for(int i = 0; i < 16; i++){
+		buffer[size+padding+i] = IV[i];
 	}
 
 	if(replaceFlag){
@@ -74,8 +98,10 @@ void fileHandler::encryptFile(const std::string& path, bool replaceFlag){
 	std::ofstream outputFile(outputPath, std::ios::binary);
 
 	// write encrypted data to output file
-	if(!outputFile.write(reinterpret_cast<char*>(buffer), size+padding)){
+	if(!outputFile.write(reinterpret_cast<char*>(buffer), size+padding+16)){
 		delete[] buffer;
+		delete[] key;
+		delete[] IV;
 		std::cout<<"error write";
 		exit(3);
 	}
@@ -86,6 +112,7 @@ void fileHandler::encryptFile(const std::string& path, bool replaceFlag){
 	outputFile.close();
 
 	delete[] key;
+	delete[] IV;
 	delete[] buffer;
 }
 
@@ -281,6 +308,7 @@ void fileHandler::decryptFile(const std::string& path, const std::string& keyPat
 
 	// array to store bytes 
 	unsigned char* buffer = new unsigned char[size];
+	unsigned char* output = new unsigned char[size-16];
 
 	// read data into buffer
 	if(!inputFile.read(reinterpret_cast<char*>(buffer),size)){
@@ -291,9 +319,16 @@ void fileHandler::decryptFile(const std::string& path, const std::string& keyPat
 
 	// read user provided key file
 	unsigned char* key = readKey(keyPath);
+
+	// get IV -> last 16 bytes of input
+	unsigned char* IV = new unsigned char[16];
+	for(int i = size-16, k = 0; i < size; i++, k++){
+		IV[k] = buffer[i];
+	}
+
 	
   	// decrypt buffer
-	for(int i = 0; i < size; i+=16){
+	for(int i = 0; i < size-16; i+=16){
 		unsigned char temp[16];
 		unsigned char tempResult[16];
 
@@ -301,16 +336,29 @@ void fileHandler::decryptFile(const std::string& path, const std::string& keyPat
 		for(int j = 0, index = i; j < 16; j++, index++){
 			temp[j] = buffer[index];
 		}
-		
-		AES::decrypt(temp, tempResult, key);
 
-		// store encrypted back in buffer
-		for(int j = 0, index = i; j < 16; j++, index++){
-			if(i < size){
-				buffer[index] = tempResult[j];
+		// check if first block -> apply IV
+		if(i == 0){
+			AES::decryptCBC(temp, tempResult, key, IV);
+		}
+		else{
+
+			// get previous output
+			unsigned char* prev = new unsigned char[16];
+			for(int l = i-16, s = 0; l < i; l++, s++){
+				prev[s] = buffer[l];
 			}
+
+			AES::decryptCBC(temp, tempResult, key, prev);
+			delete[] prev;
 		}
 
+		// store decrypted text in output
+		for(int j = 0, index = i; j < 16; j++, index++){
+			if(i < size){
+				output[index] = tempResult[j];
+			}
+		}
 	}
 
 
@@ -323,8 +371,10 @@ void fileHandler::decryptFile(const std::string& path, const std::string& keyPat
 
 
 	// write to output file
-	if(!outputFile.write(reinterpret_cast<char*>(buffer), size)){
+	if(!outputFile.write(reinterpret_cast<char*>(output), size-16)){
+		delete[] output;
 		delete[] buffer;
+		delete[] IV;
 		std::cout<<"error write";
 		exit(3);
 	}
@@ -333,6 +383,8 @@ void fileHandler::decryptFile(const std::string& path, const std::string& keyPat
 
 	delete[] key;
 	delete[] buffer;
+	delete[] IV;
+	delete[] output;
 }
 
 

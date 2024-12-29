@@ -1,21 +1,31 @@
-#ifndef AES_H
-#define AES_H
-
-#include <iostream>
+ #include <iostream>
 #include <bitset>
 
 class AES{
-	public:
+    public:
 
-        // takes array 16 bytes of plain text / (text in hexadecimal)
+        // ECB Mode
+        // takes array of 16 bytes
         // takes a second array of same size that contains the key
-		static void encrypt(unsigned char input[], unsigned char out[], unsigned char* KEY);
+        static void encrypt(unsigned char input[], unsigned char out[], unsigned char KEY[]);
 
-        // takes array of 16 bytes of ciphertext (in hexadecimal)
+
+        // CBC Mode
+        // takes array of 16 bytes
+        // takes a second array of same size that contains the key
+        static void encryptCBC(unsigned char input[], unsigned char out[], unsigned char KEY[], unsigned char* IV);
+
+
+        // takes array of 16 bytes
         // takes in 128 bit key
-        static void decrypt(unsigned char input[], unsigned char output[], unsigned char* KEY);
+        static void decrypt(unsigned char input[], unsigned char output[], unsigned char KEY[]);
 
-	private:
+        // CBC Mode
+        // takes array of 16 bytes
+        // takes in 128 bit key
+        static void decryptCBC(unsigned char input[], unsigned char out[], unsigned char KEY[], unsigned char* IV);
+
+    private:
 
         /*
             Layer 1
@@ -84,7 +94,7 @@ class AES{
             128 Key scheduler
             Generates key 
         */
-        static unsigned int* genKey(unsigned char* K);
+        static unsigned int* genKey(unsigned char K[]);
 
         /*
             function removes symmetry from round keys
@@ -103,14 +113,13 @@ class AES{
         // helper function to perform repetitive left shift
         static unsigned char GFmultiply2(unsigned char b);
 
-        //static unsigned char* randomKey();
 
 };
 
 
 // Byte substitution table
 const unsigned char SBOX[16][16] = {
-	{0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b,
+    {0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b,
      0xfe, 0xd7, 0xab, 0x76},
     {0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf,
      0x9c, 0xa4, 0x72, 0xc0},
@@ -146,7 +155,7 @@ const unsigned char SBOX[16][16] = {
 
 // Inverse byte substitution table
 const unsigned char INV_SBOX [16][16] = {
-	{0x52, 0x09, 0x6a, 0xd5, 0x30, 0x36, 0xa5, 0x38, 0xbf, 0x40, 0xa3, 0x9e,
+    {0x52, 0x09, 0x6a, 0xd5, 0x30, 0x36, 0xa5, 0x38, 0xbf, 0x40, 0xa3, 0x9e,
      0x81, 0xf3, 0xd7, 0xfb},
     {0x7c, 0xe3, 0x39, 0x82, 0x9b, 0x2f, 0xff, 0x87, 0x34, 0x8e, 0x43, 0x44,
      0xc4, 0xde, 0xe9, 0xcb},
@@ -196,6 +205,4 @@ const unsigned char INVERSE_MIXCOL_MATRIX [4][4] = {
     {0x0B, 0x0D, 0x09, 0x0E}
 };
 
-
-#endif
 
