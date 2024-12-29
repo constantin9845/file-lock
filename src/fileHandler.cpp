@@ -144,7 +144,7 @@ void fileHandler::encryptFile(const std::string& path, std::string outputPath, b
 	std::streamsize padding = 16-(size%16);
 
 	// array to store bytes 
-	unsigned char* buffer = new unsigned char[size+padding];
+	unsigned char* buffer = new unsigned char[size+padding+16];
 
 	// read data into buffer
 	if(!inputFile.read(reinterpret_cast<char*>(buffer),size)){
@@ -153,7 +153,11 @@ void fileHandler::encryptFile(const std::string& path, std::string outputPath, b
 		exit(2);
 	}
 
-	// encrypt data in the buffer
+	// generate IV
+	unsigned char* IV = genKey();
+
+	// ENCRYPTION OF FIRST BLOCK USES IV
+	// REST OF ENCRYPTION USES PREVIOUS BLOCK OUTPUT
 	for(int i = 0; i < size+padding; i+=16){
 		unsigned char temp[16];
 		unsigned char tempResult[16];
@@ -162,14 +166,33 @@ void fileHandler::encryptFile(const std::string& path, std::string outputPath, b
 		for(int j = 0, index = i; j < 16; j++, index++){
 			temp[j] = buffer[index];
 		}
-		
-		AES::encrypt(temp, tempResult, key);
+
+		// first block -> IV
+		if(i == 0){
+			AES::encryptCBC(temp, tempResult, key, IV);
+		}
+		else{
+
+			// get previous output
+			unsigned char* prev = new unsigned char[16];
+			for(int l = i-16, s = 0; l < i; l++, s++){
+				prev[s] = buffer[l];
+			}
+
+			AES::encryptCBC(temp, tempResult, key, prev);
+			delete[] prev;
+		}
 
 		// store encrypted back in buffer
 		for(int j = 0, index = i; j < 16; j++, index++){
 			buffer[index] = tempResult[j];
 		}
 
+	}
+
+	// Store IV at end of buffer
+	for(int i = 0; i < 16; i++){
+		buffer[size+padding+i] = IV[i];
 	}
 
 	if(replaceFlag){
@@ -185,14 +208,16 @@ void fileHandler::encryptFile(const std::string& path, std::string outputPath, b
 
 	
 	// write data to output file
-	if(!outputFile.write(reinterpret_cast<char*>(buffer), size+padding)){
+	if(!outputFile.write(reinterpret_cast<char*>(buffer), size+padding+16)){
 		delete[] buffer;
+		delete[] IV;
 		std::cout<<"error write";
 		exit(3);
 	}
 
 	outputFile.close();
 
+	delete[] IV;
 	delete[] buffer;
 }
 
@@ -226,7 +251,7 @@ void fileHandler::encryptFile(const std::string& path, const std::string& keyPat
 	std::streamsize padding = 16-(size%16);
 
 	// array to store bytes 
-	unsigned char* buffer = new unsigned char[size+padding];
+	unsigned char* buffer = new unsigned char[size+padding+16];
 
 	// read data into buffer
 	if(!inputFile.read(reinterpret_cast<char*>(buffer),size)){
@@ -235,10 +260,14 @@ void fileHandler::encryptFile(const std::string& path, const std::string& keyPat
 		exit(2);
 	}
 
+	// generate IV
+	unsigned char* IV = genKey();
+
 	// generate key
 	unsigned char* key = readKey(keyPath);
 
-	// encrypt buffer
+	// ENCRYPTION OF FIRST BLOCK USES IV
+	// REST OF ENCRYPTION USES PREVIOUS BLOCK OUTPUT
 	for(int i = 0; i < size+padding; i+=16){
 		unsigned char temp[16];
 		unsigned char tempResult[16];
@@ -247,14 +276,33 @@ void fileHandler::encryptFile(const std::string& path, const std::string& keyPat
 		for(int j = 0, index = i; j < 16; j++, index++){
 			temp[j] = buffer[index];
 		}
-		
-		AES::encrypt(temp, tempResult, key);
+
+		// first block -> IV
+		if(i == 0){
+			AES::encryptCBC(temp, tempResult, key, IV);
+		}
+		else{
+
+			// get previous output
+			unsigned char* prev = new unsigned char[16];
+			for(int l = i-16, s = 0; l < i; l++, s++){
+				prev[s] = buffer[l];
+			}
+
+			AES::encryptCBC(temp, tempResult, key, prev);
+			delete[] prev;
+		}
 
 		// store encrypted back in buffer
 		for(int j = 0, index = i; j < 16; j++, index++){
 			buffer[index] = tempResult[j];
 		}
 
+	}
+
+	// Store IV at end of buffer
+	for(int i = 0; i < 16; i++){
+		buffer[size+padding+i] = IV[i];
 	}
 
 	if(replaceFlag){
@@ -269,16 +317,19 @@ void fileHandler::encryptFile(const std::string& path, const std::string& keyPat
 	std::ofstream outputFile(outputPath, std::ios::binary);
 
 	// write data to output file
-	if(!outputFile.write(reinterpret_cast<char*>(buffer), size+padding)){
+	if(!outputFile.write(reinterpret_cast<char*>(buffer), size+padding+16)){
 		delete[] buffer;
+		delete[] key;
+		delete[] IV;
 		std::cout<<"error write";
 		exit(3);
 	}
 
 	outputFile.close();
 
-	delete[] key;
 	delete[] buffer;
+	delete[] key;
+	delete[] IV;
 }
 
 // Decrypt single file
@@ -404,6 +455,10 @@ std::string fileHandler::getDecryptionFileName(const std::string& filePath){
 	// extract file name from file path
 	std::filesystem::path path(filePath);
 	std::string fileName = path.filename().string();
+
+	if(fileName[0] == '_'){
+		fileName = fileName.substr(1);
+	}
 
 #ifdef _WIN32
 	newName = path.parent_path().string() + "\\" +fileName;
@@ -685,6 +740,5 @@ void fileHandler::constructPath(const std::string& filePath){
 #endif
 
 	std::filesystem::create_directories(temp);
-
 }
 
