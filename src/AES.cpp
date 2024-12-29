@@ -1,4 +1,4 @@
-#include "../include/AES.h"
+#include "AES.h"
 
 // byte substitution layer
 void AES::byteSub(unsigned char state[4][4]){
@@ -492,7 +492,7 @@ void AES::decrypt(unsigned char input[], unsigned char out[], unsigned char KEY[
 }
 
 
-void AES::encryptCBC(unsigned char input[], unsigned char out[], unsigned char KEY[], unsigned char* IV){
+void AES::encryptCBC(unsigned char input[], unsigned char out[], unsigned char KEY[], unsigned char IV[]){
 
 	// stores ciphertext
 	unsigned char state[4][4];
@@ -554,7 +554,7 @@ void AES::encryptCBC(unsigned char input[], unsigned char out[], unsigned char K
 }
 
 
-void AES::decryptCBC(unsigned char input[], unsigned char out[], unsigned char KEY[], unsigned char* IV){
+void AES::decryptCBC(unsigned char input[], unsigned char out[], unsigned char KEY[], unsigned char IV[]){
 	/*
 	Structure
 	0. XOR input with IV/previous output
@@ -616,6 +616,3 @@ void AES::decryptCBC(unsigned char input[], unsigned char out[], unsigned char K
 		}
 	}
 }
-
-
-

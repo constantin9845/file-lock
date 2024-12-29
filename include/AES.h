@@ -1,4 +1,4 @@
- #include <iostream>
+#include <iostream>
 #include <bitset>
 
 class AES{
@@ -13,7 +13,7 @@ class AES{
         // CBC Mode
         // takes array of 16 bytes
         // takes a second array of same size that contains the key
-        static void encryptCBC(unsigned char input[], unsigned char out[], unsigned char KEY[], unsigned char* IV);
+        static void encryptCBC(unsigned char input[], unsigned char out[], unsigned char KEY[], unsigned char IV[]);
 
 
         // takes array of 16 bytes
@@ -23,7 +23,7 @@ class AES{
         // CBC Mode
         // takes array of 16 bytes
         // takes in 128 bit key
-        static void decryptCBC(unsigned char input[], unsigned char out[], unsigned char KEY[], unsigned char* IV);
+        static void decryptCBC(unsigned char input[], unsigned char out[], unsigned char KEY[], unsigned char IV[]);
 
     private:
 
@@ -204,5 +204,3 @@ const unsigned char INVERSE_MIXCOL_MATRIX [4][4] = {
     {0x0D, 0x09, 0x0E, 0x0B},
     {0x0B, 0x0D, 0x09, 0x0E}
 };
-
-
