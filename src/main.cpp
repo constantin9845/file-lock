@@ -165,7 +165,7 @@ int main(int argc, char const *argv[]){
 							exit(3);
 						}
 
-						// encrypt file
+						// decrypt file
 						fileHandler::decryptFile(entry.path().string(), keyPath);
 					}
 				}
