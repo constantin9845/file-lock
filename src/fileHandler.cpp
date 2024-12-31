@@ -1,7 +1,7 @@
 #include "../include/fileHandler.h"
 
 // Encrypt single file
-void fileHandler::encryptFile(const std::string& path, bool replaceFlag){
+void fileHandler::encryptFile(const std::string& path, bool replaceFlag, bool mode, int keySize){
 
 	// input file stream
 	std::ifstream inputFile(path, std::ios::binary);
@@ -30,61 +30,95 @@ void fileHandler::encryptFile(const std::string& path, bool replaceFlag){
 	// padding needed for AES
 	std::streamsize padding = 16-(size%16);
 
+	unsigned char* IV = nullptr;
+	unsigned char* key = genKey(keySize);
+
 	// array to store bytes 
-	unsigned char* buffer = new unsigned char[size+padding+16];
+	unsigned char* buffer;
+
+	// CBC mode
+	if(mode){
+		// generate IV
+		IV = genKey(128);
+
+		// array to store bytes 
+		buffer = new unsigned char[size+padding+16];
+	}
+	else{
+		// array to store bytes 
+		buffer = new unsigned char[size+padding];
+	}
 
 	// read data into buffer
 	if(!inputFile.read(reinterpret_cast<char*>(buffer),size)){
-		std::cout<<"error";
+		std::cout<<"Could not read data into buffer";
 		delete[] buffer;
 		exit(2);
 	}
+		
+	// Encrypt in CBC mode
+	if(mode){
+		// ENCRYPTION OF FIRST BLOCK USES IV
+		// REST OF ENCRYPTION USES PREVIOUS BLOCK OUTPUT
+		for(int i = 0; i < size+padding; i+=16){
+			unsigned char temp[16];
+			unsigned char tempResult[16];
 
-	// generate IV
-	unsigned char* IV = genKey();
-
-	// generate 128 bit key
-	unsigned char* key = genKey();
-
-	// ENCRYPTION OF FIRST BLOCK USES IV
-	// REST OF ENCRYPTION USES PREVIOUS BLOCK OUTPUT
-	for(int i = 0; i < size+padding; i+=16){
-		unsigned char temp[16];
-		unsigned char tempResult[16];
-
-		// load 16 bytes
-		for(int j = 0, index = i; j < 16; j++, index++){
-			temp[j] = buffer[index];
-		}
-
-		// first block -> IV
-		if(i == 0){
-			AES::encryptCBC(temp, tempResult, key, IV);
-		}
-		else{
-
-			// get previous output
-			unsigned char* prev = new unsigned char[16];
-			for(int l = i-16, s = 0; l < i; l++, s++){
-				prev[s] = buffer[l];
+			// load 16 bytes
+			for(int j = 0, index = i; j < 16; j++, index++){
+				temp[j] = buffer[index];
 			}
 
-			AES::encryptCBC(temp, tempResult, key, prev);
-			delete[] prev;
+			// first block -> IV
+			if(i == 0){
+				AES::encryptCBC(temp, tempResult, key, IV, keySize);
+			}
+			else{
+
+				// get previous output
+				unsigned char* prev = new unsigned char[16];
+				for(int l = i-16, s = 0; l < i; l++, s++){
+					prev[s] = buffer[l];
+				}
+
+				AES::encryptCBC(temp, tempResult, key, prev, keySize);
+				delete[] prev;
+			}
+
+			// store encrypted back in buffer
+			for(int j = 0, index = i; j < 16; j++, index++){
+				buffer[index] = tempResult[j];
+			}
 		}
 
-		// store encrypted back in buffer
-		for(int j = 0, index = i; j < 16; j++, index++){
-			buffer[index] = tempResult[j];
+		// Store IV at end of buffer
+		for(int i = 0; i < 16; i++){
+			buffer[size+padding+i] = IV[i];
 		}
 
 	}
+	// Encrypt in ECB mode
+	else{
+		for(int i = 0; i < size+padding; i+=16){
+			unsigned char temp[16];
+			unsigned char tempResult[16];
+
+			// load 16 bytes
+			for(int j = 0, index = i; j < 16; j++, index++){
+				temp[j] = buffer[index];
+			}
+
+			AES::encrypt(temp, tempResult, key, keySize);
 
 
-	// Store IV at end of buffer
-	for(int i = 0; i < 16; i++){
-		buffer[size+padding+i] = IV[i];
+			// store encrypted back in buffer
+			for(int j = 0, index = i; j < 16; j++, index++){
+				buffer[index] = tempResult[j];
+			}
+		}
 	}
+
+	
 
 	if(replaceFlag){
 		inputFile.close();
@@ -97,17 +131,32 @@ void fileHandler::encryptFile(const std::string& path, bool replaceFlag){
 	// output file stream
 	std::ofstream outputFile(outputPath, std::ios::binary);
 
-	// write encrypted data to output file
-	if(!outputFile.write(reinterpret_cast<char*>(buffer), size+padding+16)){
-		delete[] buffer;
-		delete[] key;
-		delete[] IV;
-		std::cout<<"error write";
-		exit(3);
+	// CBC mode
+	if(mode){
+		// write encrypted data to output file
+		if(!outputFile.write(reinterpret_cast<char*>(buffer), size+padding+16)){
+			delete[] buffer;
+			delete[] key;
+			delete[] IV;
+			std::cout<<"error write";
+			exit(3);
+		}
+	}
+	// ECB mode
+	else{
+		// write encrypted data to output file
+		if(!outputFile.write(reinterpret_cast<char*>(buffer), size+padding)){
+			delete[] buffer;
+			delete[] key;
+			std::cout<<"error write";
+			exit(3);
+		}
 	}
 
+	
+
 	// store new key together with file
-	storeKey(key);
+	storeKey(key, keySize);
 
 	outputFile.close();
 
@@ -118,7 +167,7 @@ void fileHandler::encryptFile(const std::string& path, bool replaceFlag){
 
 // Function encrypts a file but is used for full directory encryption
 // uses user provided key
-void fileHandler::encryptFile(const std::string& path, std::string outputPath, bool dirFlag, unsigned char* key, bool replaceFlag){
+void fileHandler::encryptFile(const std::string& path, std::string outputPath, bool dirFlag, const std::string& keyPath, bool replaceFlag, bool mode, int keySize){
 
 	// input stream
 	std::ifstream inputFile(path, std::ios::binary);
@@ -144,7 +193,27 @@ void fileHandler::encryptFile(const std::string& path, std::string outputPath, b
 	std::streamsize padding = 16-(size%16);
 
 	// array to store bytes 
-	unsigned char* buffer = new unsigned char[size+padding+16];
+	unsigned char* buffer;
+	unsigned char* IV = nullptr;
+	unsigned char* key;
+
+	if(keyPath == ""){
+		key = genKey(keySize);
+		storeKey(key, keySize);
+	}
+	else{
+		key = readKey(keyPath, keySize);
+	}
+
+	if(mode){
+		// generate IV
+		IV = genKey(128);
+
+		buffer = new unsigned char[size+padding+16];
+	}
+	else{
+		buffer = new unsigned char[size+padding];
+	}
 
 	// read data into buffer
 	if(!inputFile.read(reinterpret_cast<char*>(buffer),size)){
@@ -153,47 +222,65 @@ void fileHandler::encryptFile(const std::string& path, std::string outputPath, b
 		exit(2);
 	}
 
-	// generate IV
-	unsigned char* IV = genKey();
+	if(mode){
+		// ENCRYPTION OF FIRST BLOCK USES IV
+		// REST OF ENCRYPTION USES PREVIOUS BLOCK OUTPUT
+		for(int i = 0; i < size+padding; i+=16){
+			unsigned char temp[16];
+			unsigned char tempResult[16];
 
-	// ENCRYPTION OF FIRST BLOCK USES IV
-	// REST OF ENCRYPTION USES PREVIOUS BLOCK OUTPUT
-	for(int i = 0; i < size+padding; i+=16){
-		unsigned char temp[16];
-		unsigned char tempResult[16];
-
-		// load 16 bytes
-		for(int j = 0, index = i; j < 16; j++, index++){
-			temp[j] = buffer[index];
-		}
-
-		// first block -> IV
-		if(i == 0){
-			AES::encryptCBC(temp, tempResult, key, IV);
-		}
-		else{
-
-			// get previous output
-			unsigned char* prev = new unsigned char[16];
-			for(int l = i-16, s = 0; l < i; l++, s++){
-				prev[s] = buffer[l];
+			// load 16 bytes
+			for(int j = 0, index = i; j < 16; j++, index++){
+				temp[j] = buffer[index];
 			}
 
-			AES::encryptCBC(temp, tempResult, key, prev);
-			delete[] prev;
+			// first block -> IV
+			if(i == 0){
+				AES::encryptCBC(temp, tempResult, key, IV, keySize);
+			}
+			else{
+
+				// get previous output
+				unsigned char* prev = new unsigned char[16];
+				for(int l = i-16, s = 0; l < i; l++, s++){
+					prev[s] = buffer[l];
+				}
+
+				AES::encryptCBC(temp, tempResult, key, prev, keySize);
+				delete[] prev;
+			}
+
+			// store encrypted back in buffer
+			for(int j = 0, index = i; j < 16; j++, index++){
+				buffer[index] = tempResult[j];
+			}
 		}
 
-		// store encrypted back in buffer
-		for(int j = 0, index = i; j < 16; j++, index++){
-			buffer[index] = tempResult[j];
+		// Store IV at end of buffer
+		for(int i = 0; i < 16; i++){
+			buffer[size+padding+i] = IV[i];
 		}
+	}
+	else{
+		for(int i = 0; i < size+padding; i+=16){
+			unsigned char temp[16];
+			unsigned char tempResult[16];
 
+			// load 16 bytes
+			for(int j = 0, index = i; j < 16; j++, index++){
+				temp[j] = buffer[index];
+			}
+
+			AES::encrypt(temp, tempResult, key, keySize);
+
+			// store encrypted back in buffer
+			for(int j = 0, index = i; j < 16; j++, index++){
+				buffer[index] = tempResult[j];
+			}
+		}
 	}
 
-	// Store IV at end of buffer
-	for(int i = 0; i < 16; i++){
-		buffer[size+padding+i] = IV[i];
-	}
+	
 
 	if(replaceFlag){
 		inputFile.close();
@@ -207,22 +294,37 @@ void fileHandler::encryptFile(const std::string& path, std::string outputPath, b
 	std::ofstream outputFile(outputPath, std::ios::binary);
 
 	
-	// write data to output file
-	if(!outputFile.write(reinterpret_cast<char*>(buffer), size+padding+16)){
-		delete[] buffer;
-		delete[] IV;
-		std::cout<<"error write";
-		exit(3);
+	if(mode){
+		// write data to output file
+		if(!outputFile.write(reinterpret_cast<char*>(buffer), size+padding+16)){
+			delete[] buffer;
+			delete[] IV;
+			delete[] key;
+			std::cout<<"error write";
+			exit(3);
+		}
 	}
+	else{
+		// write data to output file
+		if(!outputFile.write(reinterpret_cast<char*>(buffer), size+padding)){
+			delete[] buffer;
+			delete[] IV;
+			delete[] key;
+			std::cout<<"error write";
+			exit(3);
+		}
+	}
+	
 
 	outputFile.close();
 
 	delete[] IV;
 	delete[] buffer;
+	delete[] key;
 }
 
 // Encrypt file with user provided key
-void fileHandler::encryptFile(const std::string& path, const std::string& keyPath, bool replaceFlag){
+void fileHandler::encryptFile(const std::string& path, const std::string& keyPath, bool replaceFlag, bool mode, int keySize){
 	// input stream
 	std::ifstream inputFile(path, std::ios::binary);
 
@@ -251,59 +353,90 @@ void fileHandler::encryptFile(const std::string& path, const std::string& keyPat
 	std::streamsize padding = 16-(size%16);
 
 	// array to store bytes 
-	unsigned char* buffer = new unsigned char[size+padding+16];
+	unsigned char* buffer;
+
+	unsigned char* IV = nullptr;
+	unsigned char* key = readKey(keyPath, keySize);
+
+	if(mode){
+		// generate IV
+		IV = genKey(128);
+
+		buffer = new unsigned char[size+padding+16];
+	}
+	else{ 
+		buffer = new unsigned char[size+padding];
+	}
 
 	// read data into buffer
 	if(!inputFile.read(reinterpret_cast<char*>(buffer),size)){
-		std::cout<<"error";
+		std::cout<<"Could not read data into buffer";
 		delete[] buffer;
 		exit(2);
 	}
 
-	// generate IV
-	unsigned char* IV = genKey();
+	// CBC mode
+	if(mode){
+		// ENCRYPTION OF FIRST BLOCK USES IV
+		// REST OF ENCRYPTION USES PREVIOUS BLOCK OUTPUT
+		for(int i = 0; i < size+padding; i+=16){
+			unsigned char temp[16];
+			unsigned char tempResult[16];
 
-	// generate key
-	unsigned char* key = readKey(keyPath);
-
-	// ENCRYPTION OF FIRST BLOCK USES IV
-	// REST OF ENCRYPTION USES PREVIOUS BLOCK OUTPUT
-	for(int i = 0; i < size+padding; i+=16){
-		unsigned char temp[16];
-		unsigned char tempResult[16];
-
-		// load 16 bytes
-		for(int j = 0, index = i; j < 16; j++, index++){
-			temp[j] = buffer[index];
-		}
-
-		// first block -> IV
-		if(i == 0){
-			AES::encryptCBC(temp, tempResult, key, IV);
-		}
-		else{
-
-			// get previous output
-			unsigned char* prev = new unsigned char[16];
-			for(int l = i-16, s = 0; l < i; l++, s++){
-				prev[s] = buffer[l];
+			// load 16 bytes
+			for(int j = 0, index = i; j < 16; j++, index++){
+				temp[j] = buffer[index];
 			}
 
-			AES::encryptCBC(temp, tempResult, key, prev);
-			delete[] prev;
+			// first block -> IV
+			if(i == 0){
+				AES::encryptCBC(temp, tempResult, key, IV, keySize);
+			}
+			else{
+
+				// get previous output
+				unsigned char* prev = new unsigned char[16];
+				for(int l = i-16, s = 0; l < i; l++, s++){
+					prev[s] = buffer[l];
+				}
+
+				AES::encryptCBC(temp, tempResult, key, prev, keySize);
+				delete[] prev;
+			}
+
+			// store encrypted back in buffer
+			for(int j = 0, index = i; j < 16; j++, index++){
+				buffer[index] = tempResult[j];
+			}
+
 		}
 
-		// store encrypted back in buffer
-		for(int j = 0, index = i; j < 16; j++, index++){
-			buffer[index] = tempResult[j];
+		// Store IV at end of buffer
+		for(int i = 0; i < 16; i++){
+			buffer[size+padding+i] = IV[i];
 		}
+	}
+	else{
+		for(int i = 0; i < size+padding; i+=16){
+			unsigned char temp[16];
+			unsigned char tempResult[16];
 
+			// load 16 bytes
+			for(int j = 0, index = i; j < 16; j++, index++){
+				temp[j] = buffer[index];
+			}
+
+			AES::encrypt(temp, tempResult, key, keySize);
+
+
+			// store encrypted back in buffer
+			for(int j = 0, index = i; j < 16; j++, index++){
+				buffer[index] = tempResult[j];
+			}
+		}
 	}
 
-	// Store IV at end of buffer
-	for(int i = 0; i < 16; i++){
-		buffer[size+padding+i] = IV[i];
-	}
+	
 
 	if(replaceFlag){
 		inputFile.close();
@@ -316,14 +449,28 @@ void fileHandler::encryptFile(const std::string& path, const std::string& keyPat
 	// output file stream
 	std::ofstream outputFile(outputPath, std::ios::binary);
 
-	// write data to output file
-	if(!outputFile.write(reinterpret_cast<char*>(buffer), size+padding+16)){
-		delete[] buffer;
-		delete[] key;
-		delete[] IV;
-		std::cout<<"error write";
-		exit(3);
+	if(mode){
+		// write data to output file
+		if(!outputFile.write(reinterpret_cast<char*>(buffer), size+padding+16)){
+			delete[] buffer;
+			delete[] key;
+			delete[] IV;
+			std::cout<<"error write";
+			exit(3);
+		}
 	}
+	else{
+		// write data to output file
+		if(!outputFile.write(reinterpret_cast<char*>(buffer), size+padding)){
+			delete[] buffer;
+			delete[] key;
+			delete[] IV;
+			std::cout<<"error write";
+			exit(3);
+		}
+	}
+
+	
 
 	outputFile.close();
 
@@ -333,9 +480,9 @@ void fileHandler::encryptFile(const std::string& path, const std::string& keyPat
 }
 
 // Decrypt single file
-// Requires user key
+// Requires user key 
 // replaces input file
-void fileHandler::decryptFile(const std::string& path, const std::string& keyPath){
+void fileHandler::decryptFile(const std::string& path, const std::string& keyPath, bool mode, int keySize){
 
 	// input stream
 	std::ifstream inputFile(path, std::ios::binary);
@@ -359,7 +506,14 @@ void fileHandler::decryptFile(const std::string& path, const std::string& keyPat
 
 	// array to store bytes 
 	unsigned char* buffer = new unsigned char[size];
-	unsigned char* output = new unsigned char[size-16];
+	unsigned char* output;
+
+	if(mode){
+		output = new unsigned char[size-16];
+	}
+	else{
+		output = new unsigned char[size];
+	}
 
 	// read data into buffer
 	if(!inputFile.read(reinterpret_cast<char*>(buffer),size)){
@@ -368,51 +522,73 @@ void fileHandler::decryptFile(const std::string& path, const std::string& keyPat
 		exit(2);
 	}
 
-	// read user provided key file
-	unsigned char* key = readKey(keyPath);
+	unsigned char* key = readKey(keyPath, keySize);
+	unsigned char* IV = nullptr;
 
-	// get IV -> last 16 bytes of input
-	unsigned char* IV = new unsigned char[16];
-	for(int i = size-16, k = 0; i < size; i++, k++){
-		IV[k] = buffer[i];
+	if(mode){
+		IV = new unsigned char[16];
+		for(int i = size-16, k = 0; i < size; i++, k++){
+			IV[k] = buffer[i];
+		}
+
+		// decrypt buffer
+		for(int i = 0; i < size-16; i+=16){
+			unsigned char temp[16];
+			unsigned char tempResult[16];
+
+			// load 16 bytes
+			for(int j = 0, index = i; j < 16; j++, index++){
+				temp[j] = buffer[index];
+			}
+
+			// check if first block -> apply IV
+			if(i == 0){
+				AES::decryptCBC(temp, tempResult, key, IV, keySize);
+			}
+			else{
+
+				// get previous output
+				unsigned char* prev = new unsigned char[16];
+				for(int l = i-16, s = 0; l < i; l++, s++){
+					prev[s] = buffer[l];
+				}
+
+				AES::decryptCBC(temp, tempResult, key, prev, keySize);
+				delete[] prev;
+			}
+
+			// store decrypted text in output
+			for(int j = 0, index = i; j < 16; j++, index++){
+				if(i < size){
+					output[index] = tempResult[j];
+				}
+			}
+		}
+	}
+	// ECB mode
+	else{
+		// decrypt buffer
+		for(int i = 0; i < size; i+=16){
+			unsigned char temp[16];
+			unsigned char tempResult[16];
+
+			// load 16 bytes
+			for(int j = 0, index = i; j < 16; j++, index++){
+				temp[j] = buffer[index];
+			}
+
+			AES::decrypt(temp, tempResult, key, keySize);
+
+			// store decrypted text in output
+			for(int j = 0, index = i; j < 16; j++, index++){
+				if(i < size){
+					output[index] = tempResult[j];
+				}
+			}
+		}
 	}
 
 	
-  	// decrypt buffer
-	for(int i = 0; i < size-16; i+=16){
-		unsigned char temp[16];
-		unsigned char tempResult[16];
-
-		// load 16 bytes
-		for(int j = 0, index = i; j < 16; j++, index++){
-			temp[j] = buffer[index];
-		}
-
-		// check if first block -> apply IV
-		if(i == 0){
-			AES::decryptCBC(temp, tempResult, key, IV);
-		}
-		else{
-
-			// get previous output
-			unsigned char* prev = new unsigned char[16];
-			for(int l = i-16, s = 0; l < i; l++, s++){
-				prev[s] = buffer[l];
-			}
-
-			AES::decryptCBC(temp, tempResult, key, prev);
-			delete[] prev;
-		}
-
-		// store decrypted text in output
-		for(int j = 0, index = i; j < 16; j++, index++){
-			if(i < size){
-				output[index] = tempResult[j];
-			}
-		}
-	}
-
-
 	// delete old encrypted file
 	inputFile.close();
 	std::filesystem::remove(path);
@@ -420,14 +596,25 @@ void fileHandler::decryptFile(const std::string& path, const std::string& keyPat
 	// output stream
 	std::ofstream outputFile(outputPath, std::ios::binary);
 
-
-	// write to output file
-	if(!outputFile.write(reinterpret_cast<char*>(output), size-16)){
-		delete[] output;
-		delete[] buffer;
-		delete[] IV;
-		std::cout<<"error write";
-		exit(3);
+	if(mode){
+		// write to output file
+		if(!outputFile.write(reinterpret_cast<char*>(output), size-16)){
+			delete[] output;
+			delete[] buffer;
+			delete[] IV;
+			std::cout<<"Could not write buffer to output file";
+			exit(3);
+		}
+	}
+	else{
+		// write to output file
+		if(!outputFile.write(reinterpret_cast<char*>(output), size)){
+			delete[] output;
+			delete[] buffer;
+			delete[] IV;
+			std::cout<<"Could not write buffer to output file";
+			exit(3);
+		}
 	}
 
 	outputFile.close();
@@ -437,7 +624,6 @@ void fileHandler::decryptFile(const std::string& path, const std::string& keyPat
 	delete[] IV;
 	delete[] output;
 }
-
 
 // return filename given an absolute path
 std::string fileHandler::getFileName(const std::string& filePath){
@@ -538,9 +724,9 @@ std::string fileHandler::getOutputPath(const std::string& fileName, bool deleteO
 }
 
 // Generate 128 bit key
-unsigned char* fileHandler::genKey(){
+unsigned char* fileHandler::genKey(const int& keySize){
 
-	unsigned char* buffer = new unsigned char[16];
+	unsigned char* buffer = new unsigned char[keySize/8];
 
 	// check OS of user
 #ifdef _WIN32
@@ -550,7 +736,7 @@ unsigned char* fileHandler::genKey(){
 	std::mt19937 eng(rd());
 	std::uniform_int_distribution<> distr(0, 255);
 
-	for(int i = 0; i < 16; i++){
+	for(int i = 0; i < keySize/8; i++){
 		buffer[i] = static_cast<unsigned char>(distr(eng));
 	}
 	
@@ -565,7 +751,7 @@ unsigned char* fileHandler::genKey(){
 		exit(3);
 	}
 
-	urandom.read(reinterpret_cast<char*>(buffer),16);
+	urandom.read(reinterpret_cast<char*>(buffer),keySize/8);
 
 	if(!urandom){
 		std::cout<<"error reading urandom";
@@ -581,9 +767,9 @@ unsigned char* fileHandler::genKey(){
 }
 
 // read key from key file
-unsigned char* fileHandler::readKey(const std::string& path){
+unsigned char* fileHandler::readKey(const std::string& path, const int& keySize){
 
-	unsigned char* buffer = new unsigned char[16];
+	unsigned char* buffer = new unsigned char[keySize/8];
 
 	std::ifstream keyFileStream(path, std::ios::binary);
 
@@ -594,7 +780,7 @@ unsigned char* fileHandler::readKey(const std::string& path){
 	}
 
 
-	if(!keyFileStream.read(reinterpret_cast<char*>(buffer), 16)){
+	if(!keyFileStream.read(reinterpret_cast<char*>(buffer), keySize/8)){
 		std::cout<<"error reading key file";
 		delete[] buffer;
 		exit(3);
@@ -605,7 +791,7 @@ unsigned char* fileHandler::readKey(const std::string& path){
 }
 
 // store key in key file
-void fileHandler::storeKey(unsigned char* key){
+void fileHandler::storeKey(unsigned char* key, const int& keySize){
 
 	std::string outputPath = getOutputPath("_key", false);
 
@@ -616,7 +802,7 @@ void fileHandler::storeKey(unsigned char* key){
 		exit(3);
 	}
 
-	if(!keyOutput.write(reinterpret_cast<char*>(key), 16)){
+	if(!keyOutput.write(reinterpret_cast<char*>(key), keySize/8)){
 		std::cout<<"error key file write";
 		exit(3);
 	}

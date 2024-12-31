@@ -4,6 +4,8 @@ Encrypt individual files using the AES block cipher
 
 ### To Do
 
+- fix menu bug -> skip key entry and IV entry
+- update README guide
 - Add disclaimer file
 - Release 1.0.0
 

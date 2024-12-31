@@ -1,4 +1,4 @@
-#include <iostream>
+ #include <iostream>
 #include <bitset>
 
 class AES{
@@ -7,23 +7,23 @@ class AES{
         // ECB Mode
         // takes array of 16 bytes
         // takes a second array of same size that contains the key
-        static void encrypt(unsigned char input[], unsigned char out[], unsigned char KEY[]);
+        static void encrypt(unsigned char input[], unsigned char out[], unsigned char KEY[], int keySize);
 
 
         // CBC Mode
         // takes array of 16 bytes
         // takes a second array of same size that contains the key
-        static void encryptCBC(unsigned char input[], unsigned char out[], unsigned char KEY[], unsigned char IV[]);
+        static void encryptCBC(unsigned char input[], unsigned char out[], unsigned char KEY[], unsigned char IV[], int keySize);
 
 
         // takes array of 16 bytes
         // takes in 128 bit key
-        static void decrypt(unsigned char input[], unsigned char output[], unsigned char KEY[]);
+        static void decrypt(unsigned char input[], unsigned char output[], unsigned char KEY[], int keySize);
 
         // CBC Mode
         // takes array of 16 bytes
         // takes in 128 bit key
-        static void decryptCBC(unsigned char input[], unsigned char out[], unsigned char KEY[], unsigned char IV[]);
+        static void decryptCBC(unsigned char input[], unsigned char out[], unsigned char KEY[], unsigned char IV[], int keySize);
 
     private:
 
@@ -90,21 +90,20 @@ class AES{
         static void inverseApplyKey(unsigned char state[4][4], unsigned int* k, int keyIndex);
 
 
-        /*
-            128 Key scheduler
-            Generates key 
-        */
-        static unsigned int* genKey(unsigned char K[]);
+        // 128 Key scheduler
+        static unsigned int* genKey128(unsigned char K[]);
 
-        /*
-            function removes symmetry from round keys
-            takes in one word (round key) 
-            performs:
-                - 1 left rotation
-                - S-box substitution
-                - add round coefficient (only left most byte)
-        */
+        // 192 Key scheduler
+        static unsigned int* genKey192(unsigned char K[]);
+
+        // 256 Key scheduler
+        static unsigned int* genKey256(unsigned char K[]);
+
+        // G function for key expansion
         static unsigned int g(unsigned int w, unsigned int& gConst);
+
+        // h function for key expansion
+        static unsigned int h(unsigned int w);
 
         // perform galois multiplication
         // In Mix colunm function
