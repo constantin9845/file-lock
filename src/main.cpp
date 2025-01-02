@@ -4,7 +4,7 @@ void guide(){
 	std::cout<<"GUIDE";
 }
 
-void menu(std::string& file, bool& directionFlag, bool& mode, int& keySize, std::string& keyPath, std::string& IVpath, bool& replaceFlag){
+void menu(std::string& file, bool& directionFlag, bool& mode, int& keySize, std::string& keyPath, bool& replaceFlag){
 
 	// PATH
 	std::cout<<"\nEnter <absolute> file/directory path: ";
@@ -40,9 +40,16 @@ void menu(std::string& file, bool& directionFlag, bool& mode, int& keySize, std:
 
 	// KEY FILE
 	if(directionFlag){
-		std::cout<<"\nEnter path key file (leave blank for none): ";
-		std::cin>>keyPath;
+		std::string t;
+		std::cout<<"\nEnter path key file (enter n for none): ";
+		std::cin>>t;
 
+		if(t == "n"){
+			keyPath = "";
+		}
+		else{
+			keyPath = t;
+		}
 	}
 	else{
 		while(keyPath == ""){
@@ -51,22 +58,57 @@ void menu(std::string& file, bool& directionFlag, bool& mode, int& keySize, std:
 		}
 	}
 
-	// IV FILE
-	if(mode){
-		while(IVpath == ""){
-			std::cout<<"\nNeed IV file for Decryption: ";
-			std::cin>>IVpath;
-		}
-	}
-
 	// REPLACE FLAG
 	char replace;
-	while(replace != 'y' && replace != 'n'){
-		std::cout<<"\nReplace existing file(s)? (y or n): ";
-		std::cin>>replace;
+	if(!directionFlag){
+		replace = 'y';
 	}
+	else{
+		while(replace != 'y' && replace != 'n'){
+			std::cout<<"\nReplace existing file(s)? (y or n): ";
+			std::cin>>replace;
+		}
+	}
+	
 	if(replace == 'y'){ replaceFlag = true;}
 	else{ replaceFlag = false;}
+
+
+	// SUMMARY + WARNING
+	std::string summary = "";
+	summary += "\n\tSUMMARY\nFile(s): "+file;
+	
+	if(directionFlag){ summary += "\nEncryption"; }
+	else{ summary += "\nDecryption"; }
+
+	if(mode){ summary += "\nMode: CBC"; }
+	else{ summary += "\nMode: ECB"; }
+
+	if(keySize == 128){ summary += "\nKey Size: 128"; }
+	else if(keySize == 192){ summary += "\nKey Size: 192"; }
+	else{ summary += "\nKey Size: 256"; }
+
+	if(keyPath != ""){ summary += "\nKey File: "+keyPath; }
+	else{ summary += "\nKey File: New key to be generated"; }
+
+	if(replaceFlag){ summary += "\nReplace input file(s): TRUE"; }
+	else{ summary += "\nReplace input file(s): FALSE"; }
+
+	summary += "\nNOTE\n\n*Decrypting files with the wrong key damages files*\n*If files broken after decryption -> encrypt with same parameters and same key again (returns to previous state).";
+	summary += "\n*Now proceed with correct key*\n";
+
+	std::cout<<summary<<std::endl;
+
+	std::string confirm = "";
+	while(confirm != "y" && confirm != "n"){
+		std::cout<<"Confirm (y or n): ";
+		std::cin>>confirm;
+	}
+
+	if(confirm == "n"){
+		exit(99);
+	}
+	
 }
 
 
@@ -77,15 +119,20 @@ int main(int argc, char const *argv[]){
 	bool mode; // Mode: ECB = 0 / CBC = 1
 	int keySize;
 	std::string keyPath = "";
-	std::string IVpath = "";
 	bool replaceFlag = false;
 
 	bool dirFlag;
 
-	menu(path, directionFlag, mode, keySize, keyPath, IVpath, replaceFlag);
+	menu(path, directionFlag, mode, keySize, keyPath, replaceFlag);
 
-	bool ownKey = (keyPath != "");
-	bool ownIV = (IVpath != "");
+	bool ownKey; 
+
+	if(keyPath == ""){
+		ownKey = false;
+	}
+	else{
+		ownKey = true;
+	}
 
 #ifdef _WIN32
 	// Check if single file or directory - WIN
@@ -131,12 +178,11 @@ int main(int argc, char const *argv[]){
 		std::string parentDir = path.substr(0, path.size()-1);
 
 		unsigned char* key;
-		if(ownKey){
-			key = fileHandler::readKey(keyPath, keySize);
+		if(!ownKey){
+			key = fileHandler::genKey(keySize);
 		}
 		else{
-			key = fileHandler::genKey(keySize);
-			fileHandler::storeKey(key, keySize); // store the new key
+			key = fileHandler::readKey(keyPath, keySize);
 		}
 
 		// create new root dir / REPLACES EXISTING ONE (target dir in Downloads)
@@ -153,14 +199,6 @@ int main(int argc, char const *argv[]){
 
 				// skip hidden files
 				if(std::filesystem::is_regular_file(entry) && entry.path().filename().string().front() != '.'){
-					
-					
-					// parse new path for current file
-					std::string currentFile = fileHandler::parsePath(entry.path().string(), path);
-					if(currentFile == "."){
-						std::cout<<"could not parse file path";
-						exit(3);
-					}
 
 					std::string newPath;
 
@@ -172,13 +210,18 @@ int main(int argc, char const *argv[]){
 						fileHandler::constructPath(newPath);
 					}
 
+					std::cout<<entry.path().string()<<std::endl;
+
 					// encrypt file
-					fileHandler::encryptFile(entry.path().string(), newPath, dirFlag, keyPath, replaceFlag, mode, keySize);
-					
+					fileHandler::encryptFile(entry.path().string(), newPath, dirFlag, key, replaceFlag, mode, keySize);
 				}
 			}
-			delete[] key;
 		}
+		if(!ownKey){
+			fileHandler::storeKey(key, keySize); // store the new key
+		}
+		delete[] key;
+
 	}
 
 	// DIRECTORY DECRYPTION
@@ -194,16 +237,10 @@ int main(int argc, char const *argv[]){
 			// iterate each file/dir
 			for(const auto& entry : std::filesystem::recursive_directory_iterator(parentDir)){
 
-				// skp hidden files
+				// skip hidden files
 				if(std::filesystem::is_regular_file(entry) && entry.path().filename().string().front() != '.' && entry.path().filename().string() != "_key"){
 					
-					
-					// parse new path for current file
-					std::string currentFile = fileHandler::parsePath(entry.path().string(), path);
-					if(currentFile == "."){
-						std::cout<<"could not parse file path";
-						exit(3);
-					}
+					std::cout<<entry.path().string()<<std::endl;
 
 					// decrypt file
 					fileHandler::decryptFile(entry.path().string(), keyPath, mode, keySize);

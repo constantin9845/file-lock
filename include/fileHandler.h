@@ -47,7 +47,7 @@ public:
 	    @param dirFlag specifies directory 
       	    @param key 128 bit key
 	*/
-	static void encryptFile(const std::string& path, std::string outputPath ,bool dirFlag, const std::string& keyPath, bool replaceFlag, bool mode, int keySize);
+	static void encryptFile(const std::string& path, std::string outputPath ,bool dirFlag, unsigned char* key, bool replaceFlag, bool mode, int keySize);
 
 	/*
 	    Decrypt single file with user provided key
@@ -97,6 +97,7 @@ public:
 	// needed for reconstructing file structure
 	// @param filePath absolute path of file
 	static void constructPath(const std::string& filePath);
+
 
 private:
 	
