@@ -21,15 +21,22 @@
 class fileHandler{
 
 public:
-	//static void encryptDirectory();
-	//static void decryptDirectory();
 
 	/*
 	    Encrypt single file + generate key
 	    Output into Downloads/target/ with encrypted file + key file
-     	    @param path absolute filepath
+     	@param path absolute filepath
 	*/
-	static void encryptFile(const std::string& path, bool replaceFlag);
+	static void encryptFile(const std::string& path, bool replaceFlag, bool mode, int keySize);
+
+	/*
+	    Encrypt single file with user provided key
+     	    key should be stored in a file -> first 16 bytes are read
+	    Output into Downloads/target/ 
+	    @param path absolute filepath
+     	    @param keyPath absolute path of key file
+	*/
+	static void encryptFile(const std::string& path, const std::string& keyPath, bool replaceFlag, bool mode, int keySize);
 
 	/*
 	    Encrypts all files in specified directory (includes subdirectory files)
@@ -40,16 +47,7 @@ public:
 	    @param dirFlag specifies directory 
       	    @param key 128 bit key
 	*/
-	static void encryptFile(const std::string& path, std::string outputPath ,bool dirFlag, unsigned char* key, bool replaceFlag);
-
-	/*
-	    Encrypt single file with user provided key
-     	    key should be stored in a file -> first 16 bytes are read
-	    Output into Downloads/target/ 
-	    @param path absolute filepath
-     	    @param keyPath absolute path of key file
-	*/
-	static void encryptFile(const std::string& path, const std::string& keyPath, bool replaceFlag);
+	static void encryptFile(const std::string& path, std::string outputPath ,bool dirFlag, unsigned char* key, bool replaceFlag, bool mode, int keySize);
 
 	/*
 	    Decrypt single file with user provided key
@@ -59,30 +57,19 @@ public:
 	    @param path absolute filepath
      	    @param keyPath absolute path of key file
 	*/
-	static void decryptFile(const std::string& path, const std::string& keyPath);
-
-	/*
-	    Decrypts all files in specified directory (includes subdirectory files)
-     	    DECRYPTED FILES ARE DELETED AFTER COMPLETION
-     	    key should be stored in a file -> first 16 bytes are read
-	    Output into same location as input files
-	    @param path absolute filepath
-     	    @param dirFlag specifies directory 
-     	    @param keyPath absolute path of key file
-	*/
-	static void decryptFile(const std::string& path, bool dirFlag, const std::string& keyPath);
+	static void decryptFile(const std::string& path, const std::string& keyPath, bool mode, int keySize);
 
 	// Generate 128 bit key
 	// unix systems -> /dev/urandom , WIN -> random module
-	static unsigned char* genKey();
+	static unsigned char* genKey(const int& keySize);
 
 	// Write given key to a file
 	// @param key key stored in byte array
-	static void storeKey(unsigned char* key);
+	static void storeKey(unsigned char* key, const int& keySize);
 
 	// reads key from given file
 	// @param path absolute filepath
-	static unsigned char* readKey(const std::string& path);
+	static unsigned char* readKey(const std::string& path, const int& keySize);
 
 	// returns name from absolute path of file
 	// @param path absolute filepath
@@ -110,6 +97,7 @@ public:
 	// needed for reconstructing file structure
 	// @param filePath absolute path of file
 	static void constructPath(const std::string& filePath);
+
 
 private:
 	

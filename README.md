@@ -4,6 +4,8 @@ Encrypt individual files using the AES block cipher
 
 ### To Do
 
+- test for -r flag bugs
+- update README guide
 - Add disclaimer file
 - Release 1.0.0
 
