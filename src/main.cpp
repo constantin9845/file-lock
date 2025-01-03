@@ -76,26 +76,32 @@ void menu(std::string& file, bool& directionFlag, bool& mode, int& keySize, std:
 
 	// SUMMARY + WARNING
 	std::string summary = "";
-	summary += "\n\tSUMMARY\nFile(s): "+file;
+	summary += "\n\tSUMMARY\nFile(s)        : "+file;
 	
-	if(directionFlag){ summary += "\nEncryption"; }
-	else{ summary += "\nDecryption"; }
+	if(directionFlag){ summary += "\nType           : Encryption"; }
+	else{ summary += "\nType           : Decryption"; }
 
-	if(mode){ summary += "\nMode: CBC"; }
-	else{ summary += "\nMode: ECB"; }
+	if(mode){ summary += "\nAES Mode       : CBC"; }
+	else{ summary += "\nAES Mode       : ECB"; }
 
-	if(keySize == 128){ summary += "\nKey Size: 128"; }
-	else if(keySize == 192){ summary += "\nKey Size: 192"; }
-	else{ summary += "\nKey Size: 256"; }
+	if(keySize == 128){ summary += "\nKey Size       : 128"; }
+	else if(keySize == 192){ summary += "\nKey Size       : 192"; }
+	else{ summary += "\nKey Size       : 256"; }
 
-	if(keyPath != ""){ summary += "\nKey File: "+keyPath; }
-	else{ summary += "\nKey File: New key to be generated"; }
+	if(keyPath != ""){ summary += "\nKey File       : "+keyPath; }
+	else{ summary += "\nKey File       : New key to be generated"; }
 
-	if(replaceFlag){ summary += "\nReplace input file(s): TRUE"; }
-	else{ summary += "\nReplace input file(s): FALSE"; }
+	if(replaceFlag){ summary += "\nReplace file(s): TRUE"; }
+	else{ summary += "\nReplace file(s): FALSE"; }
 
-	summary += "\nNOTE\n\n*Decrypting files with the wrong key damages files*\n*If files broken after decryption -> encrypt with same parameters and same key again (returns to previous state).";
-	summary += "\n*Now proceed with correct key*\n";
+	summary += "\n\n\tNOTE\n";
+	summary += "*****************************************************";
+	summary += "\n* Decrypting files with the wrong key damages files *";
+	summary += "\n* If files broken after decryption:                 *";
+	summary += "\n*\t1) Encrypt with same params and key.        *";
+	summary += "\n*\t2) This returns files to initial state.     *";
+	summary += "\n* Then retry with correct key.                      *";
+	summary += "\n*****************************************************";
 
 	std::cout<<summary<<std::endl;
 
@@ -104,8 +110,10 @@ void menu(std::string& file, bool& directionFlag, bool& mode, int& keySize, std:
 		std::cout<<"Confirm (y or n): ";
 		std::cin>>confirm;
 	}
+	std::cout<<std::endl;
 
 	if(confirm == "n"){
+		std::cout<<"Exiting\n";
 		exit(99);
 	}
 	
@@ -148,17 +156,36 @@ int main(int argc, char const *argv[]){
 	if(star == "*"){ dirFlag = true; }else{ dirFlag = false; }
 #endif
 
+	std::string message = "\n\n";
+
 	// SINGLE FILE ENCRYPTION
 	if(directionFlag && !dirFlag){
 		// With user key 
 		if(ownKey){
 			fileHandler::encryptFile(path, keyPath, replaceFlag, mode, keySize);
-			std::cout<<"Find encryted file in Downloads folder"<<std::endl;
+			if(replaceFlag){
+				message += "\n"+fileHandler::getFileName(path)+" has been encrypted.\n";
+				std::cout<<message;
+			}
+			else{
+				message += "\n"+fileHandler::getFileName(path)+" has been encrypted.\n";
+				message += "Find encrypted file in Downloads/target/\n";
+				std::cout<<message;
+			}
 		}
 		// New key
 		else{
 			fileHandler::encryptFile(path, replaceFlag, mode, keySize);
-			std::cout<<"Find Key/IV and encryted file in Downloads folder"<<std::endl;
+			if(replaceFlag){
+				message += "\n"+fileHandler::getFileName(path)+" has been encrypted.\n";
+				message += "Find encryption key (_key) in Downloads/target/\n";
+				std::cout<<message;
+			}
+			else{
+				message += "\n"+fileHandler::getFileName(path)+" has been encrypted.\n";
+				message += "Find encrypted file + encryption key (_key) in Downloads/target/\n";
+				std::cout<<message;
+			}
 		}
 
 		return 0;
@@ -167,7 +194,8 @@ int main(int argc, char const *argv[]){
 	// SINGLE FILE DECRYPTION
 	else if(!directionFlag && !dirFlag){
 		fileHandler::decryptFile(path, keyPath, mode, keySize);
-		std::cout<<"File has been decrypted"<<std::endl;
+		message += "\n"+fileHandler::getFileName(path)+" has been decrypted.\n";
+		std::cout<<message;
 		return 0;
 	}
 
@@ -218,7 +246,29 @@ int main(int argc, char const *argv[]){
 			}
 		}
 		if(!ownKey){
+			if(replaceFlag){
+				message += "\nEncryption Finished.";
+				message += "\nFind encryption key (_key) in Downloads/target/\n";
+				std::cout<<message;
+			}
+			else{
+				message += "\nEncryption Finished.";
+				message += "\nFind files and encryption key (_key) in Downloads/target/\n";
+				std::cout<<message;
+			}
 			fileHandler::storeKey(key, keySize); // store the new key
+		}
+		else{
+			if(replaceFlag){
+				message += "\nEncryption Finished.\n";
+				std::cout<<message;
+			}
+			else{
+				message += "\nEncryption Finished.";
+				message += "\nFind files in Downloads/target/\n";
+				std::cout<<message;
+			}
+			
 		}
 		delete[] key;
 
@@ -247,6 +297,9 @@ int main(int argc, char const *argv[]){
 				}
 			}
 		}
+
+		message += "\nDecryption Finished.\n";
+		std::cout<<message;
 	}
 
 	else{

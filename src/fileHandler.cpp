@@ -509,11 +509,6 @@ void fileHandler::decryptFile(const std::string& path, const std::string& keyPat
 	}
 
 	unsigned char* key = readKey(keyPath, keySize);
-	for(int i = 0; i < keySize/8; i++){
-		std::cout<<key[i]<<" ";
-	}
-	std::cout<<std::endl;
-
 	unsigned char* IV = nullptr;
 
 	if(mode){
