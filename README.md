@@ -62,6 +62,10 @@ Please keep the following important points in mind:
 - **Key Size Matching**: Ensure the key size matches the expected size.
   - If the chosen key size is **larger** than the key file size, the program will throw an error.
   - If the chosen key size is **smaller** than the key file size, the program will use only **part of the key**.
+ 
+- **Test Before Using**:
+  - Run multiple rounds of tests to encrypt and decrypt some files to verify program.
+  - First choose not to replace files during encryption!
 
 ---
 
