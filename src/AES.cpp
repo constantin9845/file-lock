@@ -194,7 +194,7 @@ void AES::inverseApplyKey(unsigned char state[4][4], unsigned int* k, int keyInd
 
 
 //128 Key scheduler
-unsigned int* AES::genKey128(unsigned char K[]){
+unsigned int* AES::genKey128(unsigned char* K){
 
 	// will store 4 bytes in each element
 	unsigned int* W = new unsigned int[44];
@@ -222,7 +222,7 @@ unsigned int* AES::genKey128(unsigned char K[]){
 }
 
 // 192 bit key scheduler
-unsigned int* AES::genKey192(unsigned char K[]){
+unsigned int* AES::genKey192(unsigned char* K){
 
 	// expanded to 52 words
 	unsigned int* W = new unsigned int[52];
@@ -251,7 +251,7 @@ unsigned int* AES::genKey192(unsigned char K[]){
 }
 
 // 256 bit key scheduler
-unsigned int* AES::genKey256(unsigned char K[]){
+unsigned int* AES::genKey256(unsigned char* K){
 	// expanded to 60 words
 	unsigned int* W = new unsigned int[60];
 
@@ -454,7 +454,7 @@ unsigned char AES::GFmultiply(unsigned char b, unsigned char temp){
 	}
 }
 
-void AES::encrypt(unsigned char input[], unsigned char out[], unsigned char KEY[], int keySize){
+void AES::encrypt(unsigned char input[], unsigned char out[], unsigned char* KEY, int keySize){
 
 	// stores ciphertext
 	unsigned char state[4][4];
@@ -575,7 +575,7 @@ void AES::encrypt(unsigned char input[], unsigned char out[], unsigned char KEY[
 }
 
 
-void AES::decrypt(unsigned char input[], unsigned char out[], unsigned char KEY[], int keySize){
+void AES::decrypt(unsigned char input[], unsigned char out[], unsigned char* KEY, int keySize){
 	/*
 	Structure
 	1. key addition
@@ -681,7 +681,7 @@ void AES::decrypt(unsigned char input[], unsigned char out[], unsigned char KEY[
 }
 
 
-void AES::encryptCBC(unsigned char input[], unsigned char out[], unsigned char KEY[], unsigned char IV[], int keySize){
+void AES::encryptCBC(unsigned char input[], unsigned char out[], unsigned char* KEY, unsigned char IV[], int keySize){
 
 	// stores ciphertext
 	unsigned char state[4][4];
@@ -792,7 +792,7 @@ void AES::encryptCBC(unsigned char input[], unsigned char out[], unsigned char K
 }
 
 
-void AES::decryptCBC(unsigned char input[], unsigned char out[], unsigned char KEY[], unsigned char IV[], int keySize){
+void AES::decryptCBC(unsigned char input[], unsigned char out[], unsigned char* KEY, unsigned char IV[], int keySize){
 	/*
 	Structure
 	0. XOR input with IV/previous output
