@@ -1,7 +1,7 @@
 #include "../include/fileHandler.h"
 
 // Encrypt single file
-void fileHandler::encryptFile(const std::string& path, bool replaceFlag, bool mode, int keySize){
+void fileHandler::encryptFile(const std::string& path, const std::string& keyPath, const bool& replaceFlag, const bool& mode, const int& keySize){
 
 	// input file stream
 	std::ifstream inputFile(path, std::ios::binary);
@@ -9,8 +9,7 @@ void fileHandler::encryptFile(const std::string& path, bool replaceFlag, bool mo
 	std::string outputPath;
 
 	if(replaceFlag){
-		// create output path -> same as input
-		outputPath = getDecryptionFileName(path);
+		outputPath = path;
 	}
 	else{
 		// construct output file path
@@ -31,7 +30,14 @@ void fileHandler::encryptFile(const std::string& path, bool replaceFlag, bool mo
 	std::streamsize padding = 16-(size%16);
 
 	unsigned char* IV = nullptr;
-	unsigned char* key = genKey(keySize);
+	unsigned char* key;
+
+	if(keyPath.length() == 0){
+		key = genKey(keySize);
+	}
+	else{
+		key = readKey(keyPath, keySize);
+	}
 
 	// array to store bytes 
 	unsigned char* buffer;
@@ -156,7 +162,9 @@ void fileHandler::encryptFile(const std::string& path, bool replaceFlag, bool mo
 	
 
 	// store new key together with file
-	storeKey(key, keySize);
+	if(keyPath.length() == 0){
+		storeKey(key, keySize);
+	}
 
 	outputFile.close();
 
@@ -166,16 +174,15 @@ void fileHandler::encryptFile(const std::string& path, bool replaceFlag, bool mo
 }
 
 // Function encrypts a file but is used for full directory encryption
-// uses user provided key
-void fileHandler::encryptFile(const std::string& path, std::string outputPath, bool dirFlag, unsigned char* key, bool replaceFlag, bool mode, int keySize){
+void fileHandler::encryptFile(const std::string& path, std::string outputPath, unsigned char* key, bool mode, int keySize){
 
 	// input stream
 	std::ifstream inputFile(path, std::ios::binary);
 
 
-	if(replaceFlag){
+	if(outputPath.length() == 0){
 		// create output path -> same as input
-		outputPath = getDecryptionFileName(path);
+		outputPath = path;
 	}
 
 	if(!inputFile){
@@ -274,7 +281,7 @@ void fileHandler::encryptFile(const std::string& path, std::string outputPath, b
 
 	
 
-	if(replaceFlag){
+	if(outputPath == path){
 		inputFile.close();
 		std::filesystem::remove(path);
 	}
@@ -310,173 +317,15 @@ void fileHandler::encryptFile(const std::string& path, std::string outputPath, b
 
 	delete[] IV;
 	delete[] buffer;
-}
-
-// Encrypt file with user provided key
-void fileHandler::encryptFile(const std::string& path, const std::string& keyPath, bool replaceFlag, bool mode, int keySize){
-	// input stream
-	std::ifstream inputFile(path, std::ios::binary);
-
-	std::string outputPath;
-
-	if(replaceFlag){
-		// create output path -> same as input
-		outputPath = getDecryptionFileName(path);
-	}
-	else{
-		// construct output file path
-		outputPath = getOutputPath("_"+getFileName(path), true);
-	}
-
-	if(!inputFile){
-		std::cout<<"Error opening file.";
-		exit(2);
-	}
-
-	// get size of file
-	inputFile.seekg(0, std::ios::end);
-	std::streamsize size = inputFile.tellg();
-	inputFile.seekg(0, std::ios::beg);
-
-	// padding needed for AES
-	std::streamsize padding = 16-(size%16);
-
-	// array to store bytes 
-	unsigned char* buffer;
-
-	unsigned char* IV = nullptr;
-	unsigned char* key = readKey(keyPath, keySize);
-
-	if(mode){
-		// generate IV
-		IV = genKey(128);
-
-		buffer = new unsigned char[size+padding+16];
-	}
-	else{ 
-		buffer = new unsigned char[size+padding];
-	}
-
-	// read data into buffer
-	if(!inputFile.read(reinterpret_cast<char*>(buffer),size)){
-		std::cout<<"Could not read data into buffer";
-		delete[] buffer;
-		exit(2);
-	}
-
-	// CBC mode
-	if(mode){
-		// ENCRYPTION OF FIRST BLOCK USES IV
-		// REST OF ENCRYPTION USES PREVIOUS BLOCK OUTPUT
-		for(int i = 0; i < size+padding; i+=16){
-			unsigned char temp[16];
-			unsigned char tempResult[16];
-
-			// load 16 bytes
-			for(int j = 0, index = i; j < 16; j++, index++){
-				temp[j] = buffer[index];
-			}
-
-			// first block -> IV
-			if(i == 0){
-				AES::encryptCBC(temp, tempResult, key, IV, keySize);
-			}
-			else{
-
-				// get previous output
-				unsigned char* prev = new unsigned char[16];
-				for(int l = i-16, s = 0; l < i; l++, s++){
-					prev[s] = buffer[l];
-				}
-
-				AES::encryptCBC(temp, tempResult, key, prev, keySize);
-				delete[] prev;
-			}
-
-			// store encrypted back in buffer
-			for(int j = 0, index = i; j < 16; j++, index++){
-				buffer[index] = tempResult[j];
-			}
-
-		}
-
-		// Store IV at end of buffer
-		for(int i = 0; i < 16; i++){
-			buffer[size+padding+i] = IV[i];
-		}
-	}
-	else{
-		for(int i = 0; i < size+padding; i+=16){
-			unsigned char temp[16];
-			unsigned char tempResult[16];
-
-			// load 16 bytes
-			for(int j = 0, index = i; j < 16; j++, index++){
-				temp[j] = buffer[index];
-			}
-
-			AES::encrypt(temp, tempResult, key, keySize);
-
-
-			// store encrypted back in buffer
-			for(int j = 0, index = i; j < 16; j++, index++){
-				buffer[index] = tempResult[j];
-			}
-		}
-	}
-
-	
-
-	if(replaceFlag){
-		inputFile.close();
-		std::filesystem::remove(path);
-	}
-	else{
-		inputFile.close();
-	}
-
-	// output file stream
-	std::ofstream outputFile(outputPath, std::ios::binary);
-
-	if(mode){
-		// write data to output file
-		if(!outputFile.write(reinterpret_cast<char*>(buffer), size+padding+16)){
-			delete[] buffer;
-			delete[] key;
-			delete[] IV;
-			std::cout<<"error write";
-			exit(3);
-		}
-	}
-	else{
-		// write data to output file
-		if(!outputFile.write(reinterpret_cast<char*>(buffer), size+padding)){
-			delete[] buffer;
-			delete[] key;
-			delete[] IV;
-			std::cout<<"error write";
-			exit(3);
-		}
-	}
-
-	
-
-	outputFile.close();
-
-	delete[] buffer;
-	delete[] key;
-	delete[] IV;
 }
 
 // Decrypt single file
-// Requires user key 
-// replaces input file
-void fileHandler::decryptFile(const std::string& path, const std::string& keyPath, bool mode, int keySize){
+void fileHandler::decryptFile(const std::string& path, unsigned char* key, bool mode, int keySize){
 
 	// input stream
 	std::ifstream inputFile(path, std::ios::binary);
 
-	// create output path -> same as input
+	// create output path -> same as input ++ remove _
 	std::string outputPath = getDecryptionFileName(path);
 
 
@@ -508,11 +357,11 @@ void fileHandler::decryptFile(const std::string& path, const std::string& keyPat
 		exit(2);
 	}
 
-	unsigned char* key = readKey(keyPath, keySize);
-	unsigned char* IV = nullptr;
+	unsigned char* IV;
 
 	if(mode){
 		IV = new unsigned char[16];
+
 		for(int i = size-16, k = 0; i < size; i++, k++){
 			IV[k] = buffer[i];
 		}
@@ -610,6 +459,7 @@ void fileHandler::decryptFile(const std::string& path, const std::string& keyPat
 	delete[] IV;
 	delete[] output;
 }
+
 
 // return filename given an absolute path
 std::string fileHandler::getFileName(const std::string& filePath){
@@ -855,7 +705,8 @@ bool fileHandler::createRootDir(){
 }
 
 
-// Given file path create a relative path to Root directory in encryption directory
+
+// Given path of file, create relative path inside /Downloads/target folder
 std::string fileHandler::parsePath(const std::string& filePath, const std::string& path){
 
 	std::string relativePath = filePath.substr(path.size()-1);
@@ -898,7 +749,7 @@ std::string fileHandler::parsePath(const std::string& filePath, const std::strin
 #endif
 }
 
-// create directory for provided path
+// create all directories for provided path
 void fileHandler::constructPath(const std::string& filePath){
 	std::filesystem::path t(filePath);
 

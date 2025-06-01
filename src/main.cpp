@@ -133,24 +133,15 @@ int main(int argc, char const *argv[]){
 
 	menu(path, directionFlag, mode, keySize, keyPath, replaceFlag);
 
-	bool ownKey; 
 
-	if(keyPath == ""){
-		ownKey = false;
-	}
-	else{
-		ownKey = true;
-	}
-
+	// Check if single file or directory
+	std::filesystem::path t(path);
+	std::string star = t.filename().string();
 #ifdef _WIN32
-	// Check if single file or directory - WIN
-	std::string star = fileHandler::getFileName(path);
 
 	// set directory flag
 	if(star.size() == 0){ dirFlag = true; }else{ dirFlag = false; }
 #else
-	// Check if single file or directory - UNIX
-	std::string star = fileHandler::getFileName(path);
 
 	// set directory flag
 	if(star == "*"){ dirFlag = true; }else{ dirFlag = false; }
@@ -158,10 +149,11 @@ int main(int argc, char const *argv[]){
 
 	std::string message = "\n\n";
 
-	// SINGLE FILE ENCRYPTION
-	if(directionFlag && !dirFlag){
-		// With user key 
-		if(ownKey){
+	// ENCRYPTION
+	if(directionFlag){
+
+		// SINGLE FILE
+		if(!dirFlag){
 			fileHandler::encryptFile(path, keyPath, replaceFlag, mode, keySize);
 			if(replaceFlag){
 				message += "\n"+fileHandler::getFileName(path)+" has been encrypted.\n";
@@ -173,136 +165,95 @@ int main(int argc, char const *argv[]){
 				std::cout<<message;
 			}
 		}
-		// New key
+		// DIRECTORY
 		else{
-			fileHandler::encryptFile(path, replaceFlag, mode, keySize);
-			if(replaceFlag){
-				message += "\n"+fileHandler::getFileName(path)+" has been encrypted.\n";
-				message += "Find encryption key (_key) in Downloads/target/\n";
-				std::cout<<message;
+
+			// Top direcotry
+			std::string topDir = path.substr(0, path.size()-1);
+
+			// Generate or read key
+			unsigned char* key = (keyPath == "") ? fileHandler::genKey(keySize) : fileHandler::readKey(keyPath, keySize);
+
+			// Create target directory in Downloads if no replace flag set
+			if(!replaceFlag){
+				if(!fileHandler::createRootDir()){
+					std::cout<<"Could not create target Directory.";
+					exit(3);
+				}
 			}
-			else{
-				message += "\n"+fileHandler::getFileName(path)+" has been encrypted.\n";
-				message += "Find encrypted file + encryption key (_key) in Downloads/target/\n";
-				std::cout<<message;
-			}
-		}
 
-		return 0;
-	}
+			// Check of top directory exists and valid
+			if(std::filesystem::exists(topDir) && std::filesystem::is_directory(topDir)){
 
-	// SINGLE FILE DECRYPTION
-	else if(!directionFlag && !dirFlag){
-		fileHandler::decryptFile(path, keyPath, mode, keySize);
-		message += "\n"+fileHandler::getFileName(path)+" has been decrypted.\n";
-		std::cout<<message;
-		return 0;
-	}
+				// Iterate each file in sub directories
+				for(const auto& entry : std::filesystem::recursive_directory_iterator(topDir)){
 
-	// DIRECTORY ENCRYPTION
-	else if(directionFlag && dirFlag){
+					// Skip hidden files
+					if(std::filesystem::is_regular_file(entry) && entry.path().filename().string().front() != '.'){
 
-		//  construct relative root directory
-		std::string parentDir = path.substr(0, path.size()-1);
+						std::string outputPath;
 
-		unsigned char* key;
-		if(!ownKey){
-			key = fileHandler::genKey(keySize);
-		}
-		else{
-			key = fileHandler::readKey(keyPath, keySize);
-		}
+						if(!replaceFlag){
+							// Create relative path inside target directory
+							outputPath = fileHandler::parsePath(entry.path().string(), path);
 
-		// create new root dir / REPLACES EXISTING ONE (target dir in Downloads)
-		if(!fileHandler::createRootDir()){
-			std::cout<<"Could not create target Directory.";
-			exit(3);
-		}
-		
-		// check if dir exists and if valid
-		if(std::filesystem::exists(parentDir) && std::filesystem::is_directory(parentDir)){
+							// construct the path
+							fileHandler::constructPath(outputPath);
+						}
 
-			// iterate each file/dir
-			for(const auto& entry : std::filesystem::recursive_directory_iterator(parentDir)){
+						// logs
+						std::cout<<entry.path().string()<<std::endl;
 
-				// skip hidden files
-				if(std::filesystem::is_regular_file(entry) && entry.path().filename().string().front() != '.'){
-
-					std::string newPath;
-
-					if(!replaceFlag){
-						// construct path inside target directory
-						newPath = fileHandler::parsePath(entry.path().string(), path);
-
-						// construct the path
-						fileHandler::constructPath(newPath);
+						// encrypt entry
+						fileHandler::encryptFile(entry.path().string(), outputPath, key, mode, keySize);
 					}
-
-					std::cout<<entry.path().string()<<std::endl;
-
-					// encrypt file
-					fileHandler::encryptFile(entry.path().string(), newPath, dirFlag, key, replaceFlag, mode, keySize);
 				}
-			}
-		}
-		if(!ownKey){
-			if(replaceFlag){
-				message += "\nEncryption Finished.";
-				message += "\nFind encryption key (_key) in Downloads/target/\n";
-				std::cout<<message;
-			}
-			else{
-				message += "\nEncryption Finished.";
-				message += "\nFind files and encryption key (_key) in Downloads/target/\n";
-				std::cout<<message;
-			}
-			fileHandler::storeKey(key, keySize); // store the new key
-		}
-		else{
-			if(replaceFlag){
-				message += "\nEncryption Finished.\n";
-				std::cout<<message;
-			}
-			else{
-				message += "\nEncryption Finished.";
-				message += "\nFind files in Downloads/target/\n";
-				std::cout<<message;
-			}
-			
-		}
-		delete[] key;
 
-	}
-
-	// DIRECTORY DECRYPTION
-	else if(!directionFlag && dirFlag){
+			}
+			if(keyPath == ""){
+				fileHandler::storeKey(key, keySize);
+			}
+			delete[] key;
+		}
 		
-		//  construct relative root directory
-		std::string parentDir = path.substr(0, path.size()-1);
+	}
+	// DECRYPTION
+	else{
 
+		// SINGLE FILE
+		if(!dirFlag){
+			fileHandler::decryptFile(path, fileHandler::readKey(keyPath, keySize), mode, keySize);
+			message += "\n"+fileHandler::getFileName(path)+" has been decrypted.\n";
+			std::cout<<message;
+			return 0;
+		}
+		// DIRECTORY
+		else{
+			// Top direcotry
+			std::string topDir = path.substr(0, path.size()-1);
 
-		// check if dir exists and if valid dir
-		if(std::filesystem::exists(parentDir) && std::filesystem::is_directory(parentDir)){
+			// Check if directory exists
+			if(std::filesystem::exists(topDir) && std::filesystem::is_directory(topDir)){
 
-			// iterate each file/dir
-			for(const auto& entry : std::filesystem::recursive_directory_iterator(parentDir)){
+				// iterate each file/dir
+				for(const auto& entry : std::filesystem::recursive_directory_iterator(topDir)){
 
-				// skip hidden files
-				if(std::filesystem::is_regular_file(entry) && entry.path().filename().string().front() != '.' && entry.path().filename().string() != "_key"){
-					
-					std::cout<<entry.path().string()<<std::endl;
+					// skip hidden files
+					if(std::filesystem::is_regular_file(entry) && entry.path().filename().string().front() != '.' && entry.path().filename().string() != "_key"){
+						
+						// logs
+						std::cout<<entry.path().string()<<std::endl;
 
-					// decrypt file
-					fileHandler::decryptFile(entry.path().string(), keyPath, mode, keySize);
+						// decrypt file
+						fileHandler::decryptFile(entry.path().string(), fileHandler::readKey(keyPath, keySize), mode, keySize);
+					}
 				}
+
+				message += "\nDecryption Finished.\n";
+				std::cout<<message;
+
 			}
 		}
-
-		message += "\nDecryption Finished.\n";
-		std::cout<<message;
-	}
-
-	else{
 		return 0;
 	}
 }

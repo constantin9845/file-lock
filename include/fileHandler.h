@@ -23,20 +23,10 @@ class fileHandler{
 public:
 
 	/*
-	    Encrypt single file + generate key
-	    Output into Downloads/target/ with encrypted file + key file
-     	@param path absolute filepath
+	    Encrypt single file 
 	*/
-	static void encryptFile(const std::string& path, bool replaceFlag, bool mode, int keySize);
+	static void encryptFile(const std::string& path, const std::string& keyPath, const bool& replaceFlag, const bool& mode, const int& keySize);
 
-	/*
-	    Encrypt single file with user provided key
-     	    key should be stored in a file -> first 16 bytes are read
-	    Output into Downloads/target/ 
-	    @param path absolute filepath
-     	    @param keyPath absolute path of key file
-	*/
-	static void encryptFile(const std::string& path, const std::string& keyPath, bool replaceFlag, bool mode, int keySize);
 
 	/*
 	    Encrypts all files in specified directory (includes subdirectory files)
@@ -47,7 +37,7 @@ public:
 	    @param dirFlag specifies directory 
       	    @param key 128 bit key
 	*/
-	static void encryptFile(const std::string& path, std::string outputPath ,bool dirFlag, unsigned char* key, bool replaceFlag, bool mode, int keySize);
+	static void encryptFile(const std::string& path, std::string outputPath, unsigned char* key, bool mode, int keySize);
 
 	/*
 	    Decrypt single file with user provided key
@@ -57,7 +47,7 @@ public:
 	    @param path absolute filepath
      	    @param keyPath absolute path of key file
 	*/
-	static void decryptFile(const std::string& path, const std::string& keyPath, bool mode, int keySize);
+	static void decryptFile(const std::string& path, unsigned char* key, bool mode, int keySize);
 
 	// Generate 128 bit key
 	// unix systems -> /dev/urandom , WIN -> random module
