@@ -765,3 +765,199 @@ void fileHandler::constructPath(const std::string& filePath){
 	std::filesystem::create_directories(temp);
 }
 
+// increment counter
+void fileHandler::incrementCounter(unsigned char counter[]){
+
+	for(int i = 15; i >= 12; i--){
+		counter[i]++;
+		if(counter[i] != 0){
+			break;
+		}
+	}
+}
+
+
+// GCM encryption
+void fileHandler::AES_GCM(const std::string& path, unsigned char* key, const bool& replaceFlag, const int& keySize){
+
+	// Read file 
+
+	// input file stream
+	std::ifstream inputFile(path, std::ios::binary);
+
+	std::string outputPath;
+
+	// Construct output path
+	if(replaceFlag){
+		outputPath = path;
+	}
+	else{
+		// construct output file path
+		outputPath = getOutputPath("_"+getFileName(path), true);
+	}
+
+
+	if(!inputFile){
+		std::cout<<"Error opening file.";
+		exit(2);
+	}
+
+
+	// get size of file
+	inputFile.seekg(0, std::ios::end);
+	std::streamsize size = inputFile.tellg();
+	inputFile.seekg(0, std::ios::beg);
+
+	// padding needed for AES
+	std::streamsize padding = 16-(size%16);
+
+
+	// Generate nonce || counter = 0
+	unsigned char* nonce = genKey(128);
+
+	// Apply counter = 0 to nonce
+	for(int i = 12; i<16; i++){
+		nonce[i] = 0x00;
+	}
+
+
+	// Buffer to store data + Apply Padding, PKC#7
+	unsigned char* buffer = new unsigned char[size + padding + 12];
+
+	// Store nonce in buffer
+	for(int i = 0; i < 12; i++){
+		buffer[i] = nonce[i];
+	}
+
+	// read data into buffer
+	if(!inputFile.read(reinterpret_cast<char*>(buffer+12),size)){
+		std::cout<<"Could not read data into buffer";
+		delete[] buffer;
+		exit(2);
+	}
+
+	// Read padding bytes into buffer
+	for(int i = size+12; i < size+padding+12; i++){
+		buffer[i] = static_cast<unsigned char>(padding);
+	}
+
+
+	// Iterative Encryption
+	for(int i = 12; i < size+padding; i+=16){
+
+		unsigned char output[16];
+
+		AES::encryptCTR(nonce, key, keySize, output);
+
+		for(int j = 0; j < 16; j++){
+			buffer[i+j] = buffer[i+j] ^ output[j];
+		}
+
+		incrementCounter(nonce);
+	}
+
+
+	if(replaceFlag){
+		inputFile.close();
+		std::filesystem::remove(path);
+	}
+	else{
+		inputFile.close();
+	}
+
+	// output file stream
+	std::ofstream outputFile(outputPath, std::ios::binary);
+
+	if(!outputFile.write(reinterpret_cast<char*>(buffer), size+padding+12)){
+		delete[] buffer;
+		delete[] nonce;
+		std::cout<<"error write";
+		exit(3);
+	}
+
+	outputFile.close();
+
+	delete[] nonce;
+	delete[] buffer;
+}
+
+// GCM decryption
+void fileHandler::AES_GCM_DECRYPTION(const std::string& path, unsigned char* key, const int& keySize){
+
+	// Read file 
+
+	// input file stream
+	std::ifstream inputFile(path, std::ios::binary);
+
+	std::string outputPath = path;
+
+	if(!inputFile){
+		std::cout<<"Error opening file.";
+		exit(2);
+	}
+
+
+	// get size of file
+	inputFile.seekg(0, std::ios::end);
+	std::streamsize size = inputFile.tellg();
+	inputFile.seekg(0, std::ios::beg);
+
+
+	// Get nonce
+	unsigned char* nonce;
+	nonce = new unsigned char[16]{0};
+
+	// Buffer to store data 
+	unsigned char* buffer = new unsigned char[size];
+
+	// read data into buffer
+	if(!inputFile.read(reinterpret_cast<char*>(buffer),size)){
+		std::cout<<"Could not read data into buffer";
+		delete[] buffer;
+		exit(2);
+	}
+
+	// load nonce
+	for(int i = 0; i < 12; i++){
+		nonce[i] = buffer[i];
+	}
+
+	
+	// Iterative Encryption
+	for(int i = 12; i < size; i+=16){
+
+		unsigned char output[16];
+
+		AES::encryptCTR(nonce, key, keySize, output);
+
+		for(int j = 0; j < 16; j++){
+			buffer[i+j] = buffer[i+j] ^ output[j];
+		}
+
+		incrementCounter(nonce);
+	}
+
+	// Get padding
+	std::streamsize padding = buffer[size-1];
+
+
+	inputFile.close();
+	std::filesystem::remove(path);
+
+	// output file stream
+	std::ofstream outputFile(outputPath, std::ios::binary);
+
+	if(!outputFile.write(reinterpret_cast<char*>(buffer+12), size-padding)){
+		delete[] buffer;
+		delete[] nonce;
+		std::cout<<"error write";
+		exit(3);
+	}
+
+	outputFile.close();
+
+	delete[] nonce;
+	delete[] buffer;
+}
+
+

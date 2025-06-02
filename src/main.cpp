@@ -152,9 +152,20 @@ int main(int argc, char const *argv[]){
 	// ENCRYPTION
 	if(directionFlag){
 
+		unsigned char* key;
+
+		if(keyPath.length() == 0){
+			key = fileHandler::genKey(keySize);
+			fileHandler::storeKey(key, keySize);
+		}
+		else{
+			key = fileHandler::readKey(keyPath, keySize);
+		}
+
 		// SINGLE FILE
 		if(!dirFlag){
-			fileHandler::encryptFile(path, keyPath, replaceFlag, mode, keySize);
+			fileHandler::AES_GCM(path, key, replaceFlag, keySize);
+
 			if(replaceFlag){
 				message += "\n"+fileHandler::getFileName(path)+" has been encrypted.\n";
 				std::cout<<message;
@@ -222,7 +233,7 @@ int main(int argc, char const *argv[]){
 
 		// SINGLE FILE
 		if(!dirFlag){
-			fileHandler::decryptFile(path, fileHandler::readKey(keyPath, keySize), mode, keySize);
+			fileHandler::AES_GCM_DECRYPTION(path, fileHandler::readKey(keyPath, keySize), keySize);
 			message += "\n"+fileHandler::getFileName(path)+" has been decrypted.\n";
 			std::cout<<message;
 			return 0;

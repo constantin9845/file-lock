@@ -25,6 +25,9 @@ class AES{
         // takes in 128 bit key
         static void decryptCBC(unsigned char input[], unsigned char out[], unsigned char* KEY, unsigned char IV[], int keySize);
 
+        // CTR Mode
+        static void encryptCTR(unsigned char* nonce, unsigned char* key, const int& keySize, unsigned char output[]);
+
     private:
 
         /*

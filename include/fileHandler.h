@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <system_error>
 #include <algorithm>
+#include <thread>
 
 #ifndef FH_H
 #define FH_H
@@ -49,6 +50,19 @@ public:
 	*/
 	static void decryptFile(const std::string& path, unsigned char* key, bool mode, int keySize);
 
+	/*
+	    GCM encryption
+	*/
+	static void AES_GCM(const std::string& path, unsigned char* key, const bool& replaceFlag, const int& keySize);
+
+
+	/*
+	    GCM decryption
+	*/
+	static void AES_GCM_DECRYPTION(const std::string& path, unsigned char* key, const int& keySize);
+
+
+
 	// Generate 128 bit key
 	// unix systems -> /dev/urandom , WIN -> random module
 	static unsigned char* genKey(const int& keySize);
@@ -88,6 +102,7 @@ public:
 	// @param filePath absolute path of file
 	static void constructPath(const std::string& filePath);
 
+	static void incrementCounter(unsigned char counter[]);
 
 private:
 	

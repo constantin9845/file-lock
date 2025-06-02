@@ -793,6 +793,7 @@ void AES::encryptCBC(unsigned char input[], unsigned char out[], unsigned char* 
 
 
 void AES::decryptCBC(unsigned char input[], unsigned char out[], unsigned char* KEY, unsigned char IV[], int keySize){
+
 	/*
 	Structure
 	0. XOR input with IV/previous output
@@ -886,6 +887,75 @@ void AES::decryptCBC(unsigned char input[], unsigned char out[], unsigned char* 
 	for(int i = 0; i < 4; i++){
 		for(int j = 0; j < 4; j++){
 			out[index++] = state[j][i];
+		}
+	}
+}
+
+
+// CTR Mode
+void AES::encryptCTR(unsigned char* nonce, unsigned char* key, const int& keySize, unsigned char output[]){
+
+	unsigned char state[4][4];
+
+	unsigned int* k = nullptr;
+
+	// expand key
+	switch(keySize){
+		case 128:
+			k = genKey128(key);
+			break;
+		case 192:
+			k = genKey192(key);
+			break;
+		case 256:
+			k = genKey256(key);
+			break;
+	}
+
+	int keyIndex = 0;
+
+	// load state
+	for(int i = 0; i < 4; i++){
+		for(int j = 0; j < 4; j++){
+			state[i][j] = nonce[i + 4 * j];
+		}
+	}
+
+	// Key whitening
+	applyKey(state, k, keyIndex);
+
+	// Apply encryption layers
+	// perform basic rounds
+	for(int i = 0; i < (keySize == 128 ? 9 : (keySize == 192) ? 11 : 13); i++){
+
+
+		// byte substitution
+		byteSub(state);
+		
+		// Shift row layer
+		shiftRow(state);
+
+		// Mix column layer
+		mixCol(state);
+
+		// perform key addition
+		applyKey(state, k, keyIndex);
+	}
+
+	// Last round without mixing columns
+	byteSub(state);
+	shiftRow(state);
+	applyKey(state, k, keyIndex);
+
+	delete[] k;
+	k = nullptr;
+
+
+	// store state in output
+	int index = 0;
+	for(int i = 0; i < 4; i++){
+		for(int j = 0; j < 4; j++){
+			output[index++] = state[j][i];
 		}
 	}
 }
