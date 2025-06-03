@@ -1,10 +1,11 @@
 #include "../include/fileHandler.h"
+#include <chrono>
 
 void guide(){
 	std::cout<<"GUIDE";
 }
 
-void menu(std::string& file, bool& directionFlag, bool& mode, int& keySize, std::string& keyPath, bool& replaceFlag){
+void menu(std::string& file, bool& directionFlag, int& keySize, std::string& keyPath, bool& replaceFlag){
 
 	// PATH
 	std::cout<<"\nEnter <absolute> file/directory path: ";
@@ -18,15 +19,6 @@ void menu(std::string& file, bool& directionFlag, bool& mode, int& keySize, std:
 	}
 	if(direction == "enc"){ directionFlag = true; }
 	else{ directionFlag = false; }
-
-	// MODE
-	std::string temp;
-	while(temp != "ecb" && temp != "cbc"){
-		std::cout<<"\nMode (ecb or cbc): ";
-		std::cin>>temp;
-	}
-	if(temp == "ecb"){ mode = false; }
-	else{ mode = true; }
 
 	// KEY SIZE
 	std::string k = "";
@@ -81,9 +73,6 @@ void menu(std::string& file, bool& directionFlag, bool& mode, int& keySize, std:
 	if(directionFlag){ summary += "\nType           : Encryption"; }
 	else{ summary += "\nType           : Decryption"; }
 
-	if(mode){ summary += "\nAES Mode       : CBC"; }
-	else{ summary += "\nAES Mode       : ECB"; }
-
 	if(keySize == 128){ summary += "\nKey Size       : 128"; }
 	else if(keySize == 192){ summary += "\nKey Size       : 192"; }
 	else{ summary += "\nKey Size       : 256"; }
@@ -124,27 +113,54 @@ int main(int argc, char const *argv[]){
 
 	std::string path = "";
 	bool directionFlag;
-	bool mode; // Mode: ECB = 0 / CBC = 1
 	int keySize;
 	std::string keyPath = "";
 	bool replaceFlag = false;
 
 	bool dirFlag;
 
-	menu(path, directionFlag, mode, keySize, keyPath, replaceFlag);
+	menu(path, directionFlag, keySize, keyPath, replaceFlag);
 
 
 	// Check if single file or directory
 	std::filesystem::path t(path);
 	std::string star = t.filename().string();
+	std::string outputFilePath = "";
+
 #ifdef _WIN32
 
 	// set directory flag
 	if(star.size() == 0){ dirFlag = true; }else{ dirFlag = false; }
+
+	if(!dirFlag && !replaceFlag){
+		// get username
+		const char* homeDir = std::getenv("USERPROFILE");
+
+		if(homeDir == nullptr){
+			std::cerr << "Failed to get USERPROFILE environment variable." << std::endl;
+			exit(1);
+		}
+
+		outputFilePath = std::string(homeDir) + "\\Downloads\\target\\"+star;
+	}
+
 #else
 
 	// set directory flag
 	if(star == "*"){ dirFlag = true; }else{ dirFlag = false; }
+
+	if(!dirFlag && !replaceFlag){
+		// get username
+		const char* homeDir = std::getenv("HOME");
+
+		if(homeDir == nullptr){
+			std::cerr << "Failed to get HOME environment variable." << std::endl;
+			exit(1);
+		}
+
+		outputFilePath = std::string(homeDir) + "/Downloads/target/"+star;
+	}
+
 #endif
 
 	std::string message = "\n\n";
@@ -162,9 +178,28 @@ int main(int argc, char const *argv[]){
 			key = fileHandler::readKey(keyPath, keySize);
 		}
 
+		// Create target directory in Downloads if no replace flag set
+		if(!replaceFlag){
+			if(!fileHandler::createRootDir()){
+				std::cout<<"Could not create target Directory.";
+				exit(3);
+			}
+		}
+
 		// SINGLE FILE
 		if(!dirFlag){
-			fileHandler::AES_GCM(path, key, replaceFlag, keySize);
+
+			auto start = std::chrono::high_resolution_clock::now();
+
+
+			fileHandler::AES_GCM(path, key, replaceFlag, keySize, outputFilePath);
+
+
+			auto end = std::chrono::high_resolution_clock::now();
+
+			auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+
+			std::cout<<"Timing : "<<duration.count() << " milliseconds";
 
 			if(replaceFlag){
 				message += "\n"+fileHandler::getFileName(path)+" has been encrypted.\n";
@@ -181,17 +216,6 @@ int main(int argc, char const *argv[]){
 
 			// Top direcotry
 			std::string topDir = path.substr(0, path.size()-1);
-
-			// Generate or read key
-			unsigned char* key = (keyPath == "") ? fileHandler::genKey(keySize) : fileHandler::readKey(keyPath, keySize);
-
-			// Create target directory in Downloads if no replace flag set
-			if(!replaceFlag){
-				if(!fileHandler::createRootDir()){
-					std::cout<<"Could not create target Directory.";
-					exit(3);
-				}
-			}
 
 			// Check of top directory exists and valid
 			if(std::filesystem::exists(topDir) && std::filesystem::is_directory(topDir)){
@@ -216,13 +240,10 @@ int main(int argc, char const *argv[]){
 						std::cout<<entry.path().string()<<std::endl;
 
 						// encrypt entry
-						fileHandler::encryptFile(entry.path().string(), outputPath, key, mode, keySize);
+						fileHandler::AES_GCM(entry.path().string(), key, replaceFlag, keySize, outputPath);
 					}
 				}
 
-			}
-			if(keyPath == ""){
-				fileHandler::storeKey(key, keySize);
 			}
 			delete[] key;
 		}
@@ -231,9 +252,20 @@ int main(int argc, char const *argv[]){
 	// DECRYPTION
 	else{
 
+		unsigned char* k = fileHandler::readKey(keyPath, keySize);
+
 		// SINGLE FILE
 		if(!dirFlag){
-			fileHandler::AES_GCM_DECRYPTION(path, fileHandler::readKey(keyPath, keySize), keySize);
+			auto start = std::chrono::high_resolution_clock::now();
+
+			fileHandler::AES_GCM_DECRYPTION(path, k, keySize);
+			
+			auto end = std::chrono::high_resolution_clock::now();
+			
+			auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+
+			std::cout<<"Timing : "<<duration.count() << " milliseconds";
+
 			message += "\n"+fileHandler::getFileName(path)+" has been decrypted.\n";
 			std::cout<<message;
 			return 0;
@@ -256,7 +288,7 @@ int main(int argc, char const *argv[]){
 						std::cout<<entry.path().string()<<std::endl;
 
 						// decrypt file
-						fileHandler::decryptFile(entry.path().string(), fileHandler::readKey(keyPath, keySize), mode, keySize);
+						fileHandler::AES_GCM_DECRYPTION(entry.path().string(), k, keySize);
 					}
 				}
 

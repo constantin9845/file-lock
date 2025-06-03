@@ -8,6 +8,7 @@
 #include <system_error>
 #include <algorithm>
 #include <thread>
+#include <cstring>
 
 #ifndef FH_H
 #define FH_H
@@ -53,7 +54,7 @@ public:
 	/*
 	    GCM encryption
 	*/
-	static void AES_GCM(const std::string& path, unsigned char* key, const bool& replaceFlag, const int& keySize);
+	static void AES_GCM(const std::string& path, unsigned char* key, const bool& replaceFlag, const int& keySize, const std::string& outputFilePath);
 
 
 	/*
@@ -102,7 +103,9 @@ public:
 	// @param filePath absolute path of file
 	static void constructPath(const std::string& filePath);
 
-	static void incrementCounter(unsigned char counter[]);
+	static void setCounterInNonce(unsigned char* nonce, uint32_t counter);
+
+	static void worker(unsigned char* buffer, int startBlock, int endBlock, unsigned char* key, int keySize, const unsigned char* baseNonce);
 
 private:
 	

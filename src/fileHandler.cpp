@@ -626,12 +626,54 @@ unsigned char* fileHandler::readKey(const std::string& path, const int& keySize)
 	return buffer;
 }
 
-// store key in key file
+// Create key file
 void fileHandler::storeKey(unsigned char* key, const int& keySize){
 
-	std::string outputPath = getOutputPath("_key", false);
+	std::string outputPath;
+
+#ifdef _WIN32
+
+	// get user name
+	const char* homeDir = std::getenv("USERPROFILE");
+
+	if(homeDir == nullptr){
+		std::cerr << "Failed to get USERPROFILE environment variable." << std::endl;
+        exit(1);
+	}
+
+	// construct target folder path
+	std::string targetFolder = std::string(homeDir) + "\\Downloads\\";
+
+
+
+// Mac/Linux
+#else
+
+	// get user name
+	const char* homeDir = std::getenv("HOME");
+
+	if(homeDir == nullptr){
+		std::cerr << "Failed to get HOME environment variable." << std::endl;
+		exit(1);
+	}
+
+	// create new folder to store file + key
+	std::string targetFolder = std::string(homeDir) + "/Downloads/";
+
+#endif
+
+	outputPath = targetFolder+"_key0";
+
+	// check if file already exists
+	int counter = 1;
+	while(std::filesystem::exists(outputPath)){
+		outputPath = outputPath.substr(0,outputPath.length()-1);
+		outputPath += std::to_string(counter++);
+	}
 
 	std::ofstream keyOutput(outputPath, std::ios::binary);
+
+
 
 	if(!keyOutput){
 		std::cout<<"key file output error";
@@ -765,20 +807,37 @@ void fileHandler::constructPath(const std::string& filePath){
 	std::filesystem::create_directories(temp);
 }
 
-// increment counter
-void fileHandler::incrementCounter(unsigned char counter[]){
 
-	for(int i = 15; i >= 12; i--){
-		counter[i]++;
-		if(counter[i] != 0){
-			break;
+// update counter
+void fileHandler::setCounterInNonce(unsigned char* nonce, uint32_t counter){
+	nonce[12] = (counter >> 24) & 0xFF;
+	nonce[13] = (counter >> 16) & 0xFF;
+	nonce[14] = (counter >> 8) & 0xFF;
+	nonce[15] = counter & 0xFF;
+}
+
+// Thread worker
+void fileHandler::worker(unsigned char* buffer, int startBlock, int endBlock, unsigned char* key, int keySize, const unsigned char* baseNonce){
+
+	for(int block = startBlock; block < endBlock; block++){
+		int i = 12 + block * 16;
+
+		unsigned char output[16];
+		unsigned char nonce[16];
+
+		std::memcpy(nonce, baseNonce, 16);
+		setCounterInNonce(nonce, block); // block number = counter
+
+		AES::encryptCTR(nonce, key, keySize, output);
+
+		for(int j = 0; j < 16; j++){
+			buffer[i + j] ^= output[j];
 		}
 	}
 }
 
-
 // GCM encryption
-void fileHandler::AES_GCM(const std::string& path, unsigned char* key, const bool& replaceFlag, const int& keySize){
+void fileHandler::AES_GCM(const std::string& path, unsigned char* key, const bool& replaceFlag, const int& keySize, const std::string& outputFilePath){
 
 	// Read file 
 
@@ -792,8 +851,7 @@ void fileHandler::AES_GCM(const std::string& path, unsigned char* key, const boo
 		outputPath = path;
 	}
 	else{
-		// construct output file path
-		outputPath = getOutputPath("_"+getFileName(path), true);
+		outputPath = outputFilePath;
 	}
 
 
@@ -842,19 +900,32 @@ void fileHandler::AES_GCM(const std::string& path, unsigned char* key, const boo
 	}
 
 
-	// Iterative Encryption
-	for(int i = 12; i < size+padding; i+=16){
+	// Parallell Encryption
+	unsigned int number_of_threads = std::thread::hardware_concurrency(); 
+	int totalBlocks = (size + padding) / 16;
 
-		unsigned char output[16];
+	if(number_of_threads == 0) number_of_threads = 4;
+	number_of_threads = std::min<unsigned int>(number_of_threads, totalBlocks);
 
-		AES::encryptCTR(nonce, key, keySize, output);
+	int blocksPerThread = totalBlocks / number_of_threads;
+	int remainder = totalBlocks % number_of_threads;
 
-		for(int j = 0; j < 16; j++){
-			buffer[i+j] = buffer[i+j] ^ output[j];
-		}
+	std::vector<std::thread> threads;
+	int currentBlock = 0;
 
-		incrementCounter(nonce);
+	for(unsigned int t = 0; t < number_of_threads; t++){
+		int blocksForThread = blocksPerThread + (t < remainder ? 1 : 0);
+		int start = currentBlock;
+		int end = currentBlock + blocksForThread;
+
+		threads.emplace_back(worker, buffer,start,end,key,keySize,nonce);
+		currentBlock = end;
 	}
+
+	for(auto& th : threads){
+		th.join();
+	}
+
 
 
 	if(replaceFlag){
@@ -922,19 +993,31 @@ void fileHandler::AES_GCM_DECRYPTION(const std::string& path, unsigned char* key
 		nonce[i] = buffer[i];
 	}
 
-	
-	// Iterative Encryption
-	for(int i = 12; i < size; i+=16){
 
-		unsigned char output[16];
+	// Parallell Encryption
+	unsigned int number_of_threads = std::thread::hardware_concurrency(); 
+	int totalBlocks = size / 16;
 
-		AES::encryptCTR(nonce, key, keySize, output);
+	if(number_of_threads == 0) number_of_threads = 4;
+	number_of_threads = std::min<unsigned int>(number_of_threads, totalBlocks);
 
-		for(int j = 0; j < 16; j++){
-			buffer[i+j] = buffer[i+j] ^ output[j];
-		}
+	int blocksPerThread = totalBlocks / number_of_threads;
+	int remainder = totalBlocks % number_of_threads;
 
-		incrementCounter(nonce);
+	std::vector<std::thread> threads;
+	int currentBlock = 0;
+
+	for(unsigned int t = 0; t < number_of_threads; t++){
+		int blocksForThread = blocksPerThread + (t < remainder ? 1 : 0);
+		int start = currentBlock;
+		int end = currentBlock + blocksForThread;
+
+		threads.emplace_back(worker, buffer,start,end,key,keySize,nonce);
+		currentBlock = end;
+	}
+
+	for(auto& th : threads){
+		th.join();
 	}
 
 	// Get padding
