@@ -25,33 +25,6 @@ class fileHandler{
 public:
 
 	/*
-	    Encrypt single file 
-	*/
-	static void encryptFile(const std::string& path, const std::string& keyPath, const bool& replaceFlag, const bool& mode, const int& keySize);
-
-
-	/*
-	    Encrypts all files in specified directory (includes subdirectory files)
-     	    Reconstructs file structure inside target folder
-	    Output into Downloads/target/ with key file
-	    @param path absolute filepath
-     	    @param outputPath path where target folder is placed
-	    @param dirFlag specifies directory 
-      	    @param key 128 bit key
-	*/
-	static void encryptFile(const std::string& path, std::string outputPath, unsigned char* key, bool mode, int keySize);
-
-	/*
-	    Decrypt single file with user provided key
-     	    key should be stored in a file -> first 16 bytes are read
-	    Output into same location as input file
-     	    -> INPUT FILE IS DELETED AFTER COMPLETION
-	    @param path absolute filepath
-     	    @param keyPath absolute path of key file
-	*/
-	static void decryptFile(const std::string& path, unsigned char* key, bool mode, int keySize);
-
-	/*
 	    GCM encryption
 	*/
 	static void AES_GCM(const std::string& path, unsigned char* key, const bool& replaceFlag, const int& keySize, const std::string& outputFilePath);

@@ -4,27 +4,6 @@
 class AES{
     public:
 
-        // ECB Mode
-        // takes array of 16 bytes
-        // takes a second array of same size that contains the key
-        static void encrypt(unsigned char input[], unsigned char out[], unsigned char* KEY, int keySize);
-
-
-        // CBC Mode
-        // takes array of 16 bytes
-        // takes a second array of same size that contains the key
-        static void encryptCBC(unsigned char input[], unsigned char out[], unsigned char* KEY, unsigned char IV[], int keySize);
-
-
-        // takes array of 16 bytes
-        // takes in 128 bit key
-        static void decrypt(unsigned char input[], unsigned char output[], unsigned char* KEY, int keySize);
-
-        // CBC Mode
-        // takes array of 16 bytes
-        // takes in 128 bit key
-        static void decryptCBC(unsigned char input[], unsigned char out[], unsigned char* KEY, unsigned char IV[], int keySize);
-
         // CTR Mode
         static void encryptCTR(unsigned char* nonce, unsigned char* key, const int& keySize, unsigned char output[]);
 
