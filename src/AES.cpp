@@ -455,6 +455,70 @@ unsigned char AES::GFmultiply(unsigned char b, unsigned char temp){
 }
 
 
+// Pad AD and get number of blocks
+void AES::pad_AD(unsigned char* AD, int& AD_size){
+	int counter = 0;
+
+	int newBlocks = ((AD_size/16)+1)*16;
+
+	unsigned char* newAD = new unsigned char[newBlocks]{0};
+
+	for(int i = 0; i < AD_size; i++){
+		newAD[i] = AD[i];
+	}
+
+	delete[] AD;
+	AD = newAD;
+	newAD = nullptr;
+	AD_size = newBlocks;
+}
+
+// GHASH multiplication
+void AES::GALOIS_MULTIPLICATION(unsigned char* result, const unsigned char* HASH_SUBKEY){
+	
+}
+
+// GHASH function
+unsigned char* AES::GHASH(unsigned char* prev_g, unsigned char* input, int input_index, const unsigned char* HASH_SUBKEY){
+
+	unsigned char* result = new unsigned char[16]{0};
+
+	for(int i = 0; i < 16; i++){
+		result[i] = prev_g[i]^input[input_index+i];
+	}
+
+	GALOIS_MULTIPLICATION(result, HASH_SUBKEY);
+
+	delete[] prev_g;
+	prev_g = result;
+	result = nullptr;
+
+	return prev_g;
+}
+
+// Calculate Authentication Tag
+void AES::auth_tag(unsigned char* nonce, unsigned char* key, const int& keySize, unsigned char* AD, int& AD_size, unsigned char* Y, const int& Y_size, unsigned char* TAG){
+
+	unsigned char* g_0 = new unsigned char[16]{0};
+
+	unsigned char HASH_SUBKEY[16]{0};
+
+	encryptCTR(g_0, key, keySize, HASH_SUBKEY);
+
+	// Pad AD
+	pad_AD(AD, AD_size);
+
+	// Process AD
+	for(int i = 0; i < AD_size; i+=16){
+		g_0 = GHASH(g_0, AD, i, HASH_SUBKEY);
+	}
+
+	// Process Y
+	for(int i = 0; i < Y_size; i+=16){
+		g_0 = GHASH(g_0, Y, i, HASH_SUBKEY);
+	}
+}
+
 // CTR Mode
 void AES::encryptCTR(unsigned char* nonce, unsigned char* key, const int& keySize, unsigned char output[]){
 

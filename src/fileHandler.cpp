@@ -438,6 +438,8 @@ void fileHandler::AES_GCM(const std::string& path, unsigned char* key, const boo
 		buffer[i] = static_cast<unsigned char>(padding);
 	}
 
+	// 
+
 
 	// Parallell Encryption
 	unsigned int number_of_threads = std::thread::hardware_concurrency(); 
@@ -467,6 +469,7 @@ void fileHandler::AES_GCM(const std::string& path, unsigned char* key, const boo
 
 
 
+	// delete old file
 	if(replaceFlag){
 		inputFile.close();
 		std::filesystem::remove(path);
@@ -486,6 +489,8 @@ void fileHandler::AES_GCM(const std::string& path, unsigned char* key, const boo
 	}
 
 	outputFile.close();
+
+	// Generate
 
 	delete[] nonce;
 	delete[] buffer;
