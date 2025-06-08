@@ -456,21 +456,15 @@ unsigned char AES::GFmultiply(unsigned char b, unsigned char temp){
 
 
 // Pad AD and get number of blocks
-void AES::pad_AD(unsigned char* AD, int& AD_size){
-	int counter = 0;
+unsigned char* AES::pad_AD(unsigned char* AD, int& AD_size){
 
 	int newBlocks = ((AD_size/16)+1)*16;
-
 	unsigned char* newAD = new unsigned char[newBlocks]{0};
 
-	for(int i = 0; i < AD_size; i++){
-		newAD[i] = AD[i];
-	}
-
-	delete[] AD;
-	AD = newAD;
-	newAD = nullptr;
+	memcpy(newAD, AD, AD_size);
 	AD_size = newBlocks;
+
+	return newAD;
 }
 
 
@@ -513,43 +507,43 @@ void AES::GALOIS_MULTIPLICATION(unsigned char* result, const unsigned char* HASH
 }
 
 // GHASH function
-unsigned char* AES::GHASH(unsigned char* prev_g, unsigned char* input, int input_index, const unsigned char* HASH_SUBKEY){
-
-	unsigned char* new_g = new unsigned char[16];
+void AES::GHASH(unsigned char* prev_g, unsigned char* input, int input_index, const unsigned char* HASH_SUBKEY){
 
 	for(int i = 0; i < 16; i++){
-		new_g[i] = prev_g[i]^input[input_index+i];
+		prev_g[i] = prev_g[i]^input[input_index+i];
 	}
 
-	GALOIS_MULTIPLICATION(new_g, HASH_SUBKEY);
-
-	return new_g;
+	GALOIS_MULTIPLICATION(prev_g, HASH_SUBKEY);
 }
 
 // Calculate Authentication Tag
-void AES::auth_tag(unsigned char* nonce, unsigned char* key, const int& keySize, unsigned char* AD, int& AD_size, unsigned char* Y, const int& Y_size, unsigned char* TAG){
+void AES::auth_tag(unsigned char* nonce, unsigned char* key, const int& keySize, unsigned char* AD, int AD_size, unsigned char* Y, const int Y_size, unsigned char* TAG){
 
 	unsigned char HASH_SUBKEY[16]{0};
-	encryptCTR(nullptr, key, keySize, HASH_SUBKEY);
+	unsigned char g[16]{0};
 
-	unsigned char* g = new unsigned char[16]{0};
+	encryptCTR(g, key, keySize, HASH_SUBKEY);
+
+	std::cout<<"Encrypted 0 array"<<std::endl;
 
 	// Pad AD
-	pad_AD(AD, AD_size);
+	AD = pad_AD(AD, AD_size);
+
+	std::cout<<"Padded Y"<<std::endl;
 
 	// Process AD
 	for(int i = 0; i < AD_size; i+=16){
-		unsigned char* new_g = GHASH(g, AD, i, HASH_SUBKEY);
-		delete[] g;
-		g = new_g;
+		GHASH(g, AD, i, HASH_SUBKEY);
 	}
+
+	std::cout<<"Processed AD"<<std::endl;
 
 	// Process Y
 	for(int i = 0; i < Y_size; i+=16){
-		unsigned char* new_g = GHASH(g, Y, i, HASH_SUBKEY);
-		delete[] g;
-		g = new_g;
+		GHASH(g, Y, i, HASH_SUBKEY);
 	}
+
+	std::cout<<"Processed Y"<<std::endl;
 
 	// AD + text length addition
 	unsigned char len_block[16]{0};
@@ -561,9 +555,9 @@ void AES::auth_tag(unsigned char* nonce, unsigned char* key, const int& keySize,
 		len_block[15-i] = (bit_size2>>(i*8))&0xFF;
 	}
 
-	unsigned char* new_g = GHASH(g, len_block, 0, HASH_SUBKEY);
-	delete[] g;
-	g = new_g;
+	GHASH(g, len_block, 0, HASH_SUBKEY);
+
+	std::cout<<"Processed Length block"<<std::endl;
 
 	// encrypt (Nonce||0^31||1);
 	unsigned char J[16]{0};
@@ -574,12 +568,17 @@ void AES::auth_tag(unsigned char* nonce, unsigned char* key, const int& keySize,
 	unsigned char tag_mask[16]{0};
 	encryptCTR(J, key, keySize, tag_mask);
 
+	std::cout<<"Encrypted Nonce"<<std::endl;
+
 	// Store in TAG
 	for(int i = 0; i < 16; i++){
 		TAG[i] = g[i]^tag_mask[i];
 	}
 
-	delete[] g;
+	std::cout<<"Stored in tag array"<<std::endl;
+
+
+	delete[] AD;
 
 }
 

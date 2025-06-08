@@ -5,7 +5,7 @@ void guide(){
 	std::cout<<"GUIDE";
 }
 
-void menu(std::string& file, bool& directionFlag, int& keySize, std::string& keyPath, bool& replaceFlag){
+void menu(std::string& file, bool& directionFlag, int& keySize, std::string& keyPath, bool& replaceFlag, std::string authTag){
 
 	// PATH
 	std::cout<<"\nEnter <absolute> file/directory path: ";
@@ -13,11 +13,11 @@ void menu(std::string& file, bool& directionFlag, int& keySize, std::string& key
 
 	// ENC / DEC
 	std::string direction;
-	while(direction != "enc" && direction != "dec"){
-		std::cout<<"\nEncryption / Decryption (enter enc or dec): ";
+	while(direction != "e" && direction != "d"){
+		std::cout<<"\nEncryption / Decryption (enter e or d): ";
 		std::cin>>direction;
 	}
-	if(direction == "enc"){ directionFlag = true; }
+	if(direction == "e"){ directionFlag = true; }
 	else{ directionFlag = false; }
 
 	// KEY SIZE
@@ -50,6 +50,26 @@ void menu(std::string& file, bool& directionFlag, int& keySize, std::string& key
 		}
 	}
 
+
+	// AUTH TAG
+	std::string temp;
+	if(!directionFlag){
+		while(temp == ""){
+			std::cout<<"\nVerify Authentication tag(s)? (n for no)";
+			std::cout<<"\nEnter path of Authentication tag or directory with tags: ";
+			std::cin>>temp;
+		}
+	}
+	else{
+		while(temp != "y" && temp != "n"){
+			std::cout<<"\nGenerate Authentication Tag(s)? (y or n): ";
+			std::cin>>temp;
+		}
+	}
+	authTag = temp;
+
+	
+
 	// REPLACE FLAG
 	char replace;
 	if(!directionFlag){
@@ -68,20 +88,26 @@ void menu(std::string& file, bool& directionFlag, int& keySize, std::string& key
 
 	// SUMMARY + WARNING
 	std::string summary = "";
-	summary += "\n\tSUMMARY\nFile(s)        : "+file;
+	summary += "\n\tSUMMARY\nFile(s)                     : "+file;
 	
-	if(directionFlag){ summary += "\nType           : Encryption"; }
-	else{ summary += "\nType           : Decryption"; }
+	if(directionFlag){ summary += "\nType                        : Encryption"; }
+	else{ summary += "\nType                        : Decryption"; }
 
-	if(keySize == 128){ summary += "\nKey Size       : 128"; }
-	else if(keySize == 192){ summary += "\nKey Size       : 192"; }
-	else{ summary += "\nKey Size       : 256"; }
+	if(keySize == 128){ summary += "\nKey Size                    : 128"; }
+	else if(keySize == 192){ summary += "\nKey Size                    : 192"; }
+	else{ summary += "\nKey Size                    : 256"; }
 
-	if(keyPath != ""){ summary += "\nKey File       : "+keyPath; }
-	else{ summary += "\nKey File       : New key to be generated"; }
+	if(keyPath != ""){ summary += "\nKey File                    : "+keyPath; }
+	else{ summary += "\nKey File                    : New key to be generated"; }
 
-	if(replaceFlag){ summary += "\nReplace file(s): TRUE"; }
-	else{ summary += "\nReplace file(s): FALSE"; }
+	if((authTag == "y" || authTag == "n") && directionFlag){ summary += "\nGenerate Authentication Tag : "+authTag; }
+	else if(authTag == "n" && !directionFlag){ summary += "\nAuthenticate Tag            : NO"; }
+	else{
+		summary += "\nAuthenticating Tag(s)       : "+authTag;
+	}
+
+	if(replaceFlag){ summary += "\nReplace file(s)             : TRUE"; }
+	else{ summary += "\nReplace file(s)             : FALSE"; }
 
 	summary += "\n\n\tNOTE\n";
 	summary += "*****************************************************";
@@ -116,10 +142,11 @@ int main(int argc, char const *argv[]){
 	int keySize;
 	std::string keyPath = "";
 	bool replaceFlag = false;
+	std::string authTag = "";
 
 	bool dirFlag;
 
-	menu(path, directionFlag, keySize, keyPath, replaceFlag);
+	menu(path, directionFlag, keySize, keyPath, replaceFlag, authTag);
 
 
 	// Check if single file or directory
@@ -192,7 +219,7 @@ int main(int argc, char const *argv[]){
 			auto start = std::chrono::high_resolution_clock::now();
 
 
-			fileHandler::AES_GCM(path, key, replaceFlag, keySize, outputFilePath);
+			fileHandler::AES_GCM(path, key, replaceFlag, keySize, outputFilePath, authTag);
 
 
 			auto end = std::chrono::high_resolution_clock::now();
@@ -240,7 +267,7 @@ int main(int argc, char const *argv[]){
 						std::cout<<entry.path().string()<<std::endl;
 
 						// encrypt entry
-						fileHandler::AES_GCM(entry.path().string(), key, replaceFlag, keySize, outputPath);
+						fileHandler::AES_GCM(entry.path().string(), key, replaceFlag, keySize, outputPath, authTag);
 					}
 				}
 
@@ -258,7 +285,7 @@ int main(int argc, char const *argv[]){
 		if(!dirFlag){
 			auto start = std::chrono::high_resolution_clock::now();
 
-			fileHandler::AES_GCM_DECRYPTION(path, k, keySize);
+			fileHandler::AES_GCM_DECRYPTION(path, k, keySize, authTag);
 			
 			auto end = std::chrono::high_resolution_clock::now();
 			
@@ -288,7 +315,7 @@ int main(int argc, char const *argv[]){
 						std::cout<<entry.path().string()<<std::endl;
 
 						// decrypt file
-						fileHandler::AES_GCM_DECRYPTION(entry.path().string(), k, keySize);
+						fileHandler::AES_GCM_DECRYPTION(entry.path().string(), k, keySize, authTag);
 					}
 				}
 

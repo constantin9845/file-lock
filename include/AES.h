@@ -7,6 +7,10 @@ class AES{
         // CTR Mode
         static void encryptCTR(unsigned char* nonce, unsigned char* key, const int& keySize, unsigned char output[]);
 
+        // Calculate Authentication Tag
+        static void auth_tag(unsigned char* nonce, unsigned char* key, const int& keySize, unsigned char* AD, int AD_size, unsigned char* Y, const int Y_size, unsigned char* TAG);
+
+
     private:
 
         /*
@@ -95,17 +99,13 @@ class AES{
         static unsigned char GFmultiply2(unsigned char b);
 
         // Pad AD to be multiple of 16bytes
-        static void pad_AD(unsigned char* AD, int& AD_size); 
+        static unsigned char* pad_AD(unsigned char* AD, int& AD_size); 
 
         // GHASH function
-        static unsigned char* GHASH(unsigned char* prev_g, unsigned char* input, int input_index, const unsigned char* HASH_SUBKEY);
+        static void GHASH(unsigned char* prev_g, unsigned char* input, int input_index, const unsigned char* HASH_SUBKEY);
 
         // GHASH Multiplication
         static void GALOIS_MULTIPLICATION(unsigned char* result, const unsigned char* HASH_SUBKEY);
-
-        // Calculate Authentication Tag
-        static void auth_tag(unsigned char* nonce, unsigned char* key, const int& keySize, unsigned char* AD, int& AD_size, unsigned char* Y, const int& Y_size, unsigned char* TAG);
-
 
 };
 

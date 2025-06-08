@@ -15,9 +15,9 @@
 
 ## To DO
 
-
-- Add auth tag option
-- when auth tag --> reuse nonce.
+- Add tag authentication for decryption,
+- Authentication very slow -> only with hw accel.
+- Other, faster method for pure software implementation?
 
 - Slow performance, implement AES-NI, key expansion should happen once only.
 - Can write to file and GMAC be multithreaded?
