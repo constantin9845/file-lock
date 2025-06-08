@@ -473,50 +473,114 @@ void AES::pad_AD(unsigned char* AD, int& AD_size){
 	AD_size = newBlocks;
 }
 
+
 // GHASH multiplication
 void AES::GALOIS_MULTIPLICATION(unsigned char* result, const unsigned char* HASH_SUBKEY){
 	
+	unsigned char output[16] = {0};
+	unsigned char Y[16];
+	memcpy(Y, HASH_SUBKEY, 16);
+
+	for(int byte = 0; byte < 16; byte++){
+
+		for(int bit = 7; bit >= 0; bit--){
+
+			// Is current bit set
+			if((result[byte]>>bit) & 1){
+				// Y XOR output
+				for(int i = 0; i < 16; i++){
+					output[i] ^= Y[i];
+				}
+			}
+
+			// save MSB of Y
+			bool msb = Y[0] & 0x80;
+
+			// Shift Y << 1
+			for(int i = 0; i < 15; i++){
+				Y[i] = (Y[i] << 1) | (Y[i+1] >> 1);
+			}
+			Y[15] <<= 1;
+
+			// Reduce is msb was set
+			if(msb){
+				Y[15] ^= 0x87;
+			}
+		}
+	}
+
+	memcpy(result, output, 16);
 }
 
 // GHASH function
 unsigned char* AES::GHASH(unsigned char* prev_g, unsigned char* input, int input_index, const unsigned char* HASH_SUBKEY){
 
-	unsigned char* result = new unsigned char[16]{0};
+	unsigned char* new_g = new unsigned char[16];
 
 	for(int i = 0; i < 16; i++){
-		result[i] = prev_g[i]^input[input_index+i];
+		new_g[i] = prev_g[i]^input[input_index+i];
 	}
 
-	GALOIS_MULTIPLICATION(result, HASH_SUBKEY);
+	GALOIS_MULTIPLICATION(new_g, HASH_SUBKEY);
 
-	delete[] prev_g;
-	prev_g = result;
-	result = nullptr;
-
-	return prev_g;
+	return new_g;
 }
 
 // Calculate Authentication Tag
 void AES::auth_tag(unsigned char* nonce, unsigned char* key, const int& keySize, unsigned char* AD, int& AD_size, unsigned char* Y, const int& Y_size, unsigned char* TAG){
 
-	unsigned char* g_0 = new unsigned char[16]{0};
-
 	unsigned char HASH_SUBKEY[16]{0};
+	encryptCTR(nullptr, key, keySize, HASH_SUBKEY);
 
-	encryptCTR(g_0, key, keySize, HASH_SUBKEY);
+	unsigned char* g = new unsigned char[16]{0};
 
 	// Pad AD
 	pad_AD(AD, AD_size);
 
 	// Process AD
 	for(int i = 0; i < AD_size; i+=16){
-		g_0 = GHASH(g_0, AD, i, HASH_SUBKEY);
+		unsigned char* new_g = GHASH(g, AD, i, HASH_SUBKEY);
+		delete[] g;
+		g = new_g;
 	}
 
 	// Process Y
 	for(int i = 0; i < Y_size; i+=16){
-		g_0 = GHASH(g_0, Y, i, HASH_SUBKEY);
+		unsigned char* new_g = GHASH(g, Y, i, HASH_SUBKEY);
+		delete[] g;
+		g = new_g;
 	}
+
+	// AD + text length addition
+	unsigned char len_block[16]{0};
+	int bit_size1 = AD_size*8;
+	int bit_size2 = Y_size*8;
+	
+	for(int i = 0; i < 8; i++){
+		len_block[7-i] = (bit_size1>>(i*8))&0xFF;
+		len_block[15-i] = (bit_size2>>(i*8))&0xFF;
+	}
+
+	unsigned char* new_g = GHASH(g, len_block, 0, HASH_SUBKEY);
+	delete[] g;
+	g = new_g;
+
+	// encrypt (Nonce||0^31||1);
+	unsigned char J[16]{0};
+
+	memcpy(J, nonce, 12);
+	J[15] = 0x01;
+
+	unsigned char tag_mask[16]{0};
+	encryptCTR(J, key, keySize, tag_mask);
+
+	// Store in TAG
+	for(int i = 0; i < 16; i++){
+		TAG[i] = g[i]^tag_mask[i];
+	}
+
+	delete[] g;
+
 }
 
 // CTR Mode

@@ -413,9 +413,11 @@ void fileHandler::AES_GCM(const std::string& path, unsigned char* key, const boo
 	unsigned char* nonce = genKey(128);
 
 	// Apply counter = 0 to nonce
-	for(int i = 12; i<16; i++){
+	for(int i = 12; i<15; i++){
 		nonce[i] = 0x00;
 	}
+
+	nonce[15] = 0x01;
 
 
 	// Buffer to store data + Apply Padding, PKC#7
@@ -437,8 +439,6 @@ void fileHandler::AES_GCM(const std::string& path, unsigned char* key, const boo
 	for(int i = size+12; i < size+padding+12; i++){
 		buffer[i] = static_cast<unsigned char>(padding);
 	}
-
-	// 
 
 
 	// Parallell Encryption
