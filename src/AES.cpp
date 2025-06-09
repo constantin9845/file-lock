@@ -524,26 +524,18 @@ void AES::auth_tag(unsigned char* nonce, unsigned char* key, const int& keySize,
 
 	encryptCTR(g, key, keySize, HASH_SUBKEY);
 
-	std::cout<<"Encrypted 0 array"<<std::endl;
-
 	// Pad AD
 	AD = pad_AD(AD, AD_size);
-
-	std::cout<<"Padded Y"<<std::endl;
 
 	// Process AD
 	for(int i = 0; i < AD_size; i+=16){
 		GHASH(g, AD, i, HASH_SUBKEY);
 	}
 
-	std::cout<<"Processed AD"<<std::endl;
-
 	// Process Y
 	for(int i = 0; i < Y_size; i+=16){
 		GHASH(g, Y, i, HASH_SUBKEY);
 	}
-
-	std::cout<<"Processed Y"<<std::endl;
 
 	// AD + text length addition
 	unsigned char len_block[16]{0};
@@ -557,8 +549,6 @@ void AES::auth_tag(unsigned char* nonce, unsigned char* key, const int& keySize,
 
 	GHASH(g, len_block, 0, HASH_SUBKEY);
 
-	std::cout<<"Processed Length block"<<std::endl;
-
 	// encrypt (Nonce||0^31||1);
 	unsigned char J[16]{0};
 
@@ -568,15 +558,10 @@ void AES::auth_tag(unsigned char* nonce, unsigned char* key, const int& keySize,
 	unsigned char tag_mask[16]{0};
 	encryptCTR(J, key, keySize, tag_mask);
 
-	std::cout<<"Encrypted Nonce"<<std::endl;
-
 	// Store in TAG
 	for(int i = 0; i < 16; i++){
 		TAG[i] = g[i]^tag_mask[i];
 	}
-
-	std::cout<<"Stored in tag array"<<std::endl;
-
 
 	delete[] AD;
 

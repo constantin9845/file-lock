@@ -5,7 +5,7 @@ void guide(){
 	std::cout<<"GUIDE";
 }
 
-void menu(std::string& file, bool& directionFlag, int& keySize, std::string& keyPath, bool& replaceFlag, std::string authTag){
+void menu(std::string& file, bool& directionFlag, int& keySize, std::string& keyPath, bool& replaceFlag, std::string& AD, std::string authTag){
 
 	// PATH
 	std::cout<<"\nEnter <absolute> file/directory path: ";
@@ -68,6 +68,15 @@ void menu(std::string& file, bool& directionFlag, int& keySize, std::string& key
 	}
 	authTag = temp;
 
+	//ADDITIONAL DATA for new TAG
+	if(temp == "y" && directionFlag){
+		while(AD == ""){
+			std::cout<<"\nEnter Additional Message: ";
+			std::getline(std::cin, temp);
+			AD = temp;
+		}
+	}
+
 	
 
 	// REPLACE FLAG
@@ -106,8 +115,17 @@ void menu(std::string& file, bool& directionFlag, int& keySize, std::string& key
 		summary += "\nAuthenticating Tag(s)       : "+authTag;
 	}
 
+	if(AD != ""){
+		summary += "\nAdditional Message          : "+AD;
+	}
+	else{
+		summary += "\nAdditional Message          : NONE";
+	}
+
 	if(replaceFlag){ summary += "\nReplace file(s)             : TRUE"; }
 	else{ summary += "\nReplace file(s)             : FALSE"; }
+
+
 
 	summary += "\n\n\tNOTE\n";
 	summary += "*****************************************************";
@@ -116,6 +134,10 @@ void menu(std::string& file, bool& directionFlag, int& keySize, std::string& key
 	summary += "\n*\t1) Encrypt with same params and key.        *";
 	summary += "\n*\t2) This returns files to initial state.     *";
 	summary += "\n* Then retry with correct key.                      *";
+	summary += "\n*                                                   *";
+	summary += "\n* The same additional data message that was         *";
+	summary += "\n* used to generate the authentication tag           *";
+	summary += "\n* is needed to authenticate the tag.                *";
 	summary += "\n*****************************************************";
 
 	std::cout<<summary<<std::endl;
@@ -142,17 +164,19 @@ int main(int argc, char const *argv[]){
 	int keySize;
 	std::string keyPath = "";
 	bool replaceFlag = false;
+	std::string AD = "";
 	std::string authTag = "";
 
 	bool dirFlag;
 
-	menu(path, directionFlag, keySize, keyPath, replaceFlag, authTag);
+	menu(path, directionFlag, keySize, keyPath, replaceFlag, AD, authTag);
 
 
 	// Check if single file or directory
 	std::filesystem::path t(path);
 	std::string star = t.filename().string();
 	std::string outputFilePath = "";
+
 
 #ifdef _WIN32
 
@@ -219,7 +243,7 @@ int main(int argc, char const *argv[]){
 			auto start = std::chrono::high_resolution_clock::now();
 
 
-			fileHandler::AES_GCM(path, key, replaceFlag, keySize, outputFilePath, authTag);
+			fileHandler::AES_GCM(path, key, replaceFlag, keySize, outputFilePath, authTag, AD);
 
 
 			auto end = std::chrono::high_resolution_clock::now();
@@ -267,7 +291,7 @@ int main(int argc, char const *argv[]){
 						std::cout<<entry.path().string()<<std::endl;
 
 						// encrypt entry
-						fileHandler::AES_GCM(entry.path().string(), key, replaceFlag, keySize, outputPath, authTag);
+						fileHandler::AES_GCM(entry.path().string(), key, replaceFlag, keySize, outputPath, authTag, AD);
 					}
 				}
 
@@ -285,7 +309,7 @@ int main(int argc, char const *argv[]){
 		if(!dirFlag){
 			auto start = std::chrono::high_resolution_clock::now();
 
-			fileHandler::AES_GCM_DECRYPTION(path, k, keySize, authTag);
+			fileHandler::AES_GCM_DECRYPTION(path, k, keySize, authTag, AD);
 			
 			auto end = std::chrono::high_resolution_clock::now();
 			
@@ -308,14 +332,30 @@ int main(int argc, char const *argv[]){
 				// iterate each file/dir
 				for(const auto& entry : std::filesystem::recursive_directory_iterator(topDir)){
 
-					// skip hidden files
-					if(std::filesystem::is_regular_file(entry) && entry.path().filename().string().front() != '.' && entry.path().filename().string() != "_key"){
+					// skip hidden files, AUTH tags, and AD text files
+					if(
+						std::filesystem::is_regular_file(entry) && 
+						entry.path().filename().string().front() != '.' && 
+						entry.path().filename().string() != "_key" &&
+						entry.path().filename().string().find("_Additional_Message.txt") == std::string::npos &&
+						entry.path().filename().string().find("_TAG") == std::string::npos
+					){
 						
 						// logs
 						std::cout<<entry.path().string()<<std::endl;
+						
+						// Additional message file path
+						std::string AD_path = ((entry.path().parent_path() / entry.path().stem()).string())+"_Additional_Message.txt";
+
+						// Get AD from file
+						std::ifstream temp (AD_path);
+						std::string content((std::istreambuf_iterator<char>(temp)),std::istreambuf_iterator<char>());
+
+						// AUTH TAG FOR FILE
+						std::string TAG_path = entry.path().string()+"_TAG";
 
 						// decrypt file
-						fileHandler::AES_GCM_DECRYPTION(entry.path().string(), k, keySize, authTag);
+						fileHandler::AES_GCM_DECRYPTION(entry.path().string(), k, keySize, TAG_path, content);
 					}
 				}
 
