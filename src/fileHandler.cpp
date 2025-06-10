@@ -376,7 +376,7 @@ void fileHandler::worker(unsigned char* buffer, int startBlock, int endBlock, un
 }
 
 // GCM encryption
-void fileHandler::AES_GCM(const std::string& path, unsigned char* key, const bool& replaceFlag, const int& keySize, const std::string& outputFilePath, std::string authTag, std::string AD){
+void fileHandler::AES_GCM(const std::string& path, unsigned char* key, const bool& replaceFlag, const int& keySize, const std::string& outputFilePath, bool authTag, std::string AD){
 
 	// Read file 
 
@@ -490,38 +490,55 @@ void fileHandler::AES_GCM(const std::string& path, unsigned char* key, const boo
 
 	outputFile.close();
 
-	// Generate Authentication Tag
-	// unsigned char* nonce, unsigned char* key, const int& keySize, unsigned char* AD, int& AD_size, unsigned char* Y, const int& Y_size, unsigned char* TAG)
-	unsigned char* TAG = new unsigned char[16]{0};
-	unsigned char* ADD = new unsigned char[AD.size()]{0};
-	memcpy(ADD, AD.data(), AD.size());
-	AES::auth_tag(nonce, key, keySize, ADD, AD.size(), buffer, size+padding+12, TAG);
+	if(authTag){
+		// Generate Authentication Tag
+		unsigned char* TAG = new unsigned char[16]{0};
+		unsigned char* ADD;
+		
+		if(AD == "n"){
+			AES::auth_tag(nonce, key, keySize, ADD, 0, buffer, size+padding+12, TAG);
+		}
+		else{
+			ADD = new unsigned char[AD.size()]{0};
+			memcpy(ADD, AD.data(), AD.size());
+			AES::auth_tag(nonce, key, keySize, ADD, AD.size(), buffer, size+padding+12, TAG);
+		}
 
-	// output Auth TAG file stream
-	std::ofstream outputFileTag(outputPath+"_TAG", std::ios::binary);
+		std::cout<<"Created tag for: "<<path<<std::endl;
 
-	if(!outputFileTag.write(reinterpret_cast<char*>(TAG), 16)){
-		std::cout<<"error write TAG";
+
+		// output Auth TAG file stream
+		std::ofstream outputFileTag(outputPath+"_TAG", std::ios::binary);
+
+		if(!outputFileTag.write(reinterpret_cast<char*>(TAG), 16)){
+			std::cout<<"error write TAG";
+		}
+
+		std::cout<<"TAG written to file"<<std::endl;
+
+		// Write AD to a text file
+		if(AD != "n"){
+			std::filesystem::path t(outputPath);
+			std::string AD_path = (t.parent_path() / t.stem()).string();
+
+			std::ofstream outputAD;
+			outputAD.open(AD_path+"_Additional_Message.txt");
+			outputAD<<AD;
+			outputAD.close();
+
+			std::cout<<"AD written to file"<<std::endl;
+		}
+
+		delete[] TAG;
+		delete[] ADD;
 	}
 
-	// Write AD to a text file
-	std::filesystem::path t(outputPath);
-	std::string AD_path = (t.parent_path() / t.stem()).string();
-
-	std::ofstream outputAD;
-	outputAD.open(AD_path+"_Additional_Message.txt");
-	outputAD<<AD;
-	outputAD.close();
-
-
-
-	delete[] TAG;
 	delete[] nonce;
 	delete[] buffer;
 }
 
 // GCM decryption
-void fileHandler::AES_GCM_DECRYPTION(const std::string& path, unsigned char* key, const int& keySize, std::string authTag, std::string AD){
+void fileHandler::AES_GCM_DECRYPTION(const std::string& path, unsigned char* key, const int& keySize, bool authTag, bool AD){
 
 	// Read file 
 
@@ -562,54 +579,84 @@ void fileHandler::AES_GCM_DECRYPTION(const std::string& path, unsigned char* key
 	}
 
 	// Authenticate Tag
+	if(authTag){
+		std::filesystem::path p(path);
+		std::string TAG_path = p.string()+"_TAG";
+		std::string AD_path = ((p.parent_path() / p.stem()).string())+"_Additional_Message.txt";
 
-	/// CLAIMED TAG
-	std::ifstream tag_file(authTag, std::ios::binary);
-	unsigned char* CLAIMED_TAG = new unsigned char[16];
+		std::cout<<"TAG: "<<TAG_path<<std::endl;
+		std::cout<<"AD: "<<AD_path<<std::endl;
 
-	if(!tag_file){
-		std::cout<<"Error opening tag.";
-		exit(2);
-	}
+		std::ifstream tag_file(TAG_path, std::ios::binary);
+		unsigned char* CLAIMED_TAG = new unsigned char[16];
 
-	// read tag
-	if(!tag_file.read(reinterpret_cast<char*>(CLAIMED_TAG),16)){
-		std::cout<<"Could not read TAG";
-		delete[] buffer;
-		delete[] CLAIMED_TAG;
-		delete[] nonce;
-		exit(2);
-	}
-
-
-	unsigned char* TAG = new unsigned char[16]{0};
-	unsigned char* ADD = new unsigned char[AD.size()]{0}; 
-
-	memcpy(ADD, AD.data(), AD.size());
-	AES::auth_tag(nonce, key, keySize, ADD, AD.size(), buffer, size, TAG);
-
-	// Compare tags
-	if(!memcmp(TAG, CLAIMED_TAG, 16) == 0){
-		std::string t;
-		std::cout<<"Authentication Tag for "<<path<<" failed."<<std::endl;
-
-		while(t != "y" && t != "n"){
-			std::cout<<"Skip File? (y or n): ";
-			std::cin>>t;
+		if(!tag_file){
+			std::cout<<"Error opening tag.";
+			exit(2);
 		}
-		
-		if(t == "n"){
 
+		// read tag
+		if(!tag_file.read(reinterpret_cast<char*>(CLAIMED_TAG),16)){
+			std::cout<<"Could not read TAG";
 			delete[] buffer;
 			delete[] CLAIMED_TAG;
 			delete[] nonce;
+			exit(2);
+		}
+
+		tag_file.close();
+
+		unsigned char* TAG = new unsigned char[16]{0};
+		unsigned char* ADD; 
+
+		if(AD){
+			std::ifstream temp (AD_path);
+			std::string content((std::istreambuf_iterator<char>(temp)),std::istreambuf_iterator<char>());
+			temp.close();
+
+			ADD = new unsigned char[content.size()];
+
+			memcpy(ADD,content.data(),content.size());
+			AES::auth_tag(nonce, key, keySize, ADD, content.size(), buffer, size, TAG);
+		}
+		else{
+			AES::auth_tag(nonce, key, keySize, ADD, 0, buffer, size, TAG);
+		}
+
+		// Compare tags
+		if(memcmp(TAG, CLAIMED_TAG, 16) != 0){
+			std::string t;
+			std::cout<<"Authentication Tag for "<<path<<" failed."<<std::endl;
+
+			while(t != "y" && t != "n"){
+				std::cout<<"Skip File? (y or n): ";
+				std::cin>>t;
+			}
+			
+			if(t == "n"){
+
+				delete[] buffer;
+				delete[] CLAIMED_TAG;
+				delete[] nonce;
+				delete[] TAG;
+				delete[] ADD;
+
+				return;
+			}
+		}
+		else{
+			std::string t;
+			std::cout<<"Tag for "<<path<<" authenticated."<<std::endl;
+
+
+			std::filesystem::remove(TAG_path);
+			std::filesystem::remove(AD_path);
+
+			delete[] CLAIMED_TAG;
 			delete[] TAG;
 			delete[] ADD;
-
-			return;
 		}
 	}
-
 
 	// Parallell Encryption
 	unsigned int number_of_threads = std::thread::hardware_concurrency(); 

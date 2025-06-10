@@ -525,12 +525,15 @@ void AES::auth_tag(unsigned char* nonce, unsigned char* key, const int& keySize,
 	encryptCTR(g, key, keySize, HASH_SUBKEY);
 
 	// Pad AD
-	AD = pad_AD(AD, AD_size);
+	if(AD_size > 0){
+		AD = pad_AD(AD, AD_size);
 
-	// Process AD
-	for(int i = 0; i < AD_size; i+=16){
-		GHASH(g, AD, i, HASH_SUBKEY);
+		// Process AD
+		for(int i = 0; i < AD_size; i+=16){
+			GHASH(g, AD, i, HASH_SUBKEY);
+		}
 	}
+
 
 	// Process Y
 	for(int i = 0; i < Y_size; i+=16){
@@ -563,7 +566,10 @@ void AES::auth_tag(unsigned char* nonce, unsigned char* key, const int& keySize,
 		TAG[i] = g[i]^tag_mask[i];
 	}
 
-	delete[] AD;
+	if(AD_size > 0){
+		delete[] AD;
+	}
+	
 
 }
 

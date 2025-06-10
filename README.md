@@ -38,10 +38,10 @@ Directory:
 
 ## To DO
 
-- Add input fix for AD input: newline must be eaten before std::getline()
 
-- TAGS added: test all 4 cases: menu input needs refining.
+- When TAG with no AD --> TAG comes out ad empty file. (works fine if AD is added)
 
+- Add input fix for AD input: newline must be eaten before std::getline().
 
 - Authentication very slow -> only with hw accel.
 - Other, faster method for pure software implementation?
@@ -53,6 +53,7 @@ Directory:
 
 -- check for very large input size.
 -- duplicate AD txt files in dir encryption
+-- add option to auto detect AD and tagL: for dir decryption : some yes some no.
 
 
 

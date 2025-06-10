@@ -27,13 +27,13 @@ public:
 	/*
 	    GCM encryption
 	*/
-	static void AES_GCM(const std::string& path, unsigned char* key, const bool& replaceFlag, const int& keySize, const std::string& outputFilePath, std::string authTag, std::string AD);
+	static void AES_GCM(const std::string& path, unsigned char* key, const bool& replaceFlag, const int& keySize, const std::string& outputFilePath, bool authTag, std::string AD);
 
 
 	/*
 	    GCM decryption
 	*/
-	static void AES_GCM_DECRYPTION(const std::string& path, unsigned char* key, const int& keySize, std::string authTag, std::string AD);
+	static void AES_GCM_DECRYPTION(const std::string& path, unsigned char* key, const int& keySize, bool authTag, bool AD);
 
 
 
