@@ -456,14 +456,12 @@ unsigned char AES::GFmultiply(unsigned char b, unsigned char temp){
 
 
 // Pad AD and get number of blocks
-unsigned char* AES::pad_AD(unsigned char* AD, int& AD_size){
+unsigned char* AES::pad_AD(unsigned char* AD, int AD_size, int& padded_size){
 
-	int newBlocks = ((AD_size/16)+1)*16;
-	unsigned char* newAD = new unsigned char[newBlocks]{0};
+	padded_size = ((AD_size/16)+1)*16;
+	unsigned char* newAD = new unsigned char[padded_size]{0};
 
 	memcpy(newAD, AD, AD_size);
-	AD_size = newBlocks;
-
 	return newAD;
 }
 
@@ -524,14 +522,17 @@ void AES::auth_tag(unsigned char* nonce, unsigned char* key, const int& keySize,
 
 	encryptCTR(g, key, keySize, HASH_SUBKEY);
 
+	int original_AD_size = AD_size;
+	int padded_size = 0;
+	unsigned char* temp = nullptr;
+
 	// Pad AD
 	if(AD_size > 0){
-		unsigned char* temp;
-		temp = pad_AD(AD, AD_size);
+		temp = pad_AD(AD, AD_size, padded_size);
 		delete[] AD;
 
 		// Process AD
-		for(int i = 0; i < AD_size; i+=16){
+		for(int i = 0; i < padded_size; i+=16){
 			GHASH(g, temp, i, HASH_SUBKEY);
 		}
 
@@ -547,7 +548,7 @@ void AES::auth_tag(unsigned char* nonce, unsigned char* key, const int& keySize,
 
 	// AD + text length addition
 	unsigned char len_block[16]{0};
-	int bit_size1 = AD_size*8;
+	int bit_size1 = original_AD_size*8;
 	int bit_size2 = Y_size*8;
 	
 	for(int i = 0; i < 8; i++){
@@ -570,8 +571,6 @@ void AES::auth_tag(unsigned char* nonce, unsigned char* key, const int& keySize,
 	for(int i = 0; i < 16; i++){
 		TAG[i] = g[i]^tag_mask[i];
 	}
-	
-
 }
 
 // CTR Mode

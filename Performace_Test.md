@@ -36,3 +36,15 @@ Timing in milliseconds
 ### Key 256
 - Encryption Time : 5365
 - Decryption Time : 5238
+
+## Timing Parallellized encryption + Authentication TAG:
+
+### Key 128
+- Encryption Time : 4064
+- Decryption Time : 4232
+### Key 192
+- Encryption Time : 4741
+- Decryption Time : 4601 
+### Key 256
+- Encryption Time : 5365
+- Decryption Time : 5238

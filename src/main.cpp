@@ -55,7 +55,7 @@ void menu(std::string& file, bool& directionFlag, int& keySize, std::string& key
 	std::string temp;
 	if(!directionFlag){
 		while(temp == ""){
-			std::cout<<"\nVerify Authentication tag(s)? (y or n)";
+			std::cout<<"\nVerify Authentication tag(s)? (y or n): ";
 			std::cin>>temp;
 		}
 	}
@@ -66,6 +66,8 @@ void menu(std::string& file, bool& directionFlag, int& keySize, std::string& key
 		}
 	}
 	authTag = (temp == "y");
+
+	std::cin.ignore();
 
 	//ADDITIONAL DATA for new TAG
 	std::string ad = "";
@@ -246,6 +248,8 @@ int main(int argc, char const *argv[]){
 	// ENCRYPTION
 	if(directionFlag){
 
+		std::cout<<"Starting Encryption..."<<std::endl;
+
 		unsigned char* key;
 
 		if(keyPath.length() == 0){
@@ -269,6 +273,8 @@ int main(int argc, char const *argv[]){
 
 			auto start = std::chrono::high_resolution_clock::now();
 
+			std::cout<<"-- "<<path<<std::endl;
+
 			fileHandler::AES_GCM(path, key, replaceFlag, keySize, outputFilePath, authTag, AD);
 
 
@@ -276,7 +282,7 @@ int main(int argc, char const *argv[]){
 
 			auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
-			std::cout<<"Timing : "<<duration.count() << " milliseconds";
+			std::cout<<"Finished in : "<<duration.count() << " ms"<<std::endl;
 
 			if(replaceFlag){
 				message += "\n"+fileHandler::getFileName(path)+" has been encrypted.\n";
@@ -297,6 +303,8 @@ int main(int argc, char const *argv[]){
 			// Check of top directory exists and valid
 			if(std::filesystem::exists(topDir) && std::filesystem::is_directory(topDir)){
 
+				auto start = std::chrono::high_resolution_clock::now();
+
 				// Iterate each file in sub directories
 				for(const auto& entry : std::filesystem::recursive_directory_iterator(topDir)){
 
@@ -314,13 +322,20 @@ int main(int argc, char const *argv[]){
 						}
 
 						// logs
-						std::cout<<entry.path().string()<<std::endl;
+						std::cout<<"-- "<<entry.path().string()<<std::endl;
 
 						// encrypt entry
 						fileHandler::AES_GCM(entry.path().string(), key, replaceFlag, keySize, outputPath, authTag, AD);
 					}
 				}
 
+				auto end = std::chrono::high_resolution_clock::now();
+
+				auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+
+				std::cout<<"Encryption Done."<<std::endl;
+
+				std::cout<<"Finished in : "<<duration.count() << " ms"<<std::endl;
 			}
 			delete[] key;
 		}
@@ -329,10 +344,15 @@ int main(int argc, char const *argv[]){
 	// DECRYPTION
 	else{
 
+		std::cout<<"Starting Decryption..."<<std::endl;
+
 		unsigned char* k = fileHandler::readKey(keyPath, keySize);
 
 		// SINGLE FILE
 		if(!dirFlag){
+
+			std::cout<<"-- "<<path<<std::endl;
+
 			auto start = std::chrono::high_resolution_clock::now();
 			
 
@@ -343,10 +363,11 @@ int main(int argc, char const *argv[]){
 			
 			auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
-			std::cout<<"Timing : "<<duration.count() << " milliseconds";
-
 			message += "\n"+fileHandler::getFileName(path)+" has been decrypted.\n";
 			std::cout<<message;
+
+			std::cout<<"Finished in : "<<duration.count() << " ms"<<std::endl;
+
 			return 0;
 		}
 		// DIRECTORY
@@ -356,6 +377,8 @@ int main(int argc, char const *argv[]){
 
 			// Check if directory exists
 			if(std::filesystem::exists(topDir) && std::filesystem::is_directory(topDir)){
+
+				auto start = std::chrono::high_resolution_clock::now();
 
 				// iterate each file/dir
 				for(const auto& entry : std::filesystem::recursive_directory_iterator(topDir)){
@@ -370,15 +393,21 @@ int main(int argc, char const *argv[]){
 					){
 						
 						// logs
-						std::cout<<entry.path().string()<<std::endl;
+						std::cout<<"-- "<<entry.path().string()<<std::endl;
 						
 						fileHandler::AES_GCM_DECRYPTION(entry.path().string(), k, keySize, authTag, (AD == "y"));
 						
 					}
 				}
 
-				message += "\nDecryption Finished.\n";
-				std::cout<<message;
+
+				auto end = std::chrono::high_resolution_clock::now();
+
+				auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+
+				std::cout<<"Decryption Done."<<std::endl;
+
+				std::cout<<"Finished in : "<<duration.count() << " ms"<<std::endl;
 
 			}
 		}

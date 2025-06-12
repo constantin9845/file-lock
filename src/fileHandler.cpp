@@ -461,6 +461,7 @@ void fileHandler::AES_GCM(const std::string& path, unsigned char* key, const boo
 
 		threads.emplace_back(worker, buffer,start,end,key,keySize,nonce);
 		currentBlock = end;
+
 	}
 
 	for(auto& th : threads){
@@ -471,6 +472,7 @@ void fileHandler::AES_GCM(const std::string& path, unsigned char* key, const boo
 
 	// delete old file
 	if(replaceFlag){
+		std::cout<<"---- Remove original file:"<<std::endl;
 		inputFile.close();
 		std::filesystem::remove(path);
 	}
@@ -491,6 +493,8 @@ void fileHandler::AES_GCM(const std::string& path, unsigned char* key, const boo
 	outputFile.close();
 
 	if(authTag){
+		std::cout<<"---- Creating Authentication Tag"<<std::endl;
+
 		// Generate Authentication Tag
 		unsigned char* TAG = new unsigned char[16]{0};
 		unsigned char* ADD;
@@ -502,6 +506,7 @@ void fileHandler::AES_GCM(const std::string& path, unsigned char* key, const boo
 		else{
 			ADD = new unsigned char[AD.size()]{0};
 			memcpy(ADD, AD.data(), AD.size());
+
 			AES::auth_tag(nonce, key, keySize, ADD, AD.size(), buffer, size+padding+12, TAG);
 		}
 
@@ -561,6 +566,7 @@ void fileHandler::AES_GCM_DECRYPTION(const std::string& path, unsigned char* key
 	// Buffer to store data 
 	unsigned char* buffer = new unsigned char[size];
 
+
 	// read data into buffer
 	if(!inputFile.read(reinterpret_cast<char*>(buffer),size)){
 		std::cout<<"Could not read data into buffer";
@@ -575,6 +581,7 @@ void fileHandler::AES_GCM_DECRYPTION(const std::string& path, unsigned char* key
 
 	// Authenticate Tag
 	if(authTag){
+		std::cout<<"---- Verify Authentication Tag"<<std::endl;
 		std::filesystem::path p(path);
 		std::string TAG_path = p.string()+"_TAG";
 		std::string AD_path = ((p.parent_path() / p.stem()).string())+"_Additional_Message.txt";
@@ -605,7 +612,6 @@ void fileHandler::AES_GCM_DECRYPTION(const std::string& path, unsigned char* key
 			std::ifstream temp (AD_path);
 			std::string content((std::istreambuf_iterator<char>(temp)),std::istreambuf_iterator<char>());
 
-			std::cout<<content<<std::endl;
 			temp.close();
 
 			ADD = new unsigned char[content.size()];
@@ -622,10 +628,10 @@ void fileHandler::AES_GCM_DECRYPTION(const std::string& path, unsigned char* key
 		// Compare tags
 		if(memcmp(TAG, CLAIMED_TAG, 16) != 0){
 			std::string t;
-			std::cout<<"Authentication Tag for "<<path<<" FAILED."<<std::endl;
+			std::cout<<"---- Authentication Tag for "<<path<<" FAILED."<<std::endl;
 
 			while(t != "y" && t != "n"){
-				std::cout<<"Skip Decrypting File? (y or n): ";
+				std::cout<<"---- Skip Decrypting File? (y or n): ";
 				std::cin>>t;
 			}
 			
@@ -641,8 +647,7 @@ void fileHandler::AES_GCM_DECRYPTION(const std::string& path, unsigned char* key
 		}
 		else{
 			std::string t;
-			std::cout<<"Tag for "<<path<<" AUTHENTICATED."<<std::endl;
-
+			std::cout<<"---- Tag for "<<path<<" AUTHENTICATED."<<std::endl;
 
 			std::filesystem::remove(TAG_path);
 			std::filesystem::remove(AD_path);
@@ -652,7 +657,7 @@ void fileHandler::AES_GCM_DECRYPTION(const std::string& path, unsigned char* key
 		}
 	}
 
-	// Parallell Encryption
+	// Parallell Decryption
 	unsigned int number_of_threads = std::thread::hardware_concurrency(); 
 	int totalBlocks = size / 16;
 
@@ -680,7 +685,6 @@ void fileHandler::AES_GCM_DECRYPTION(const std::string& path, unsigned char* key
 
 	// Get padding
 	std::streamsize padding = buffer[size-1];
-
 
 	inputFile.close();
 	std::filesystem::remove(path);

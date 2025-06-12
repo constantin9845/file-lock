@@ -99,7 +99,7 @@ class AES{
         static unsigned char GFmultiply2(unsigned char b);
 
         // Pad AD to be multiple of 16bytes
-        static unsigned char* pad_AD(unsigned char* AD, int& AD_size); 
+        static unsigned char* pad_AD(unsigned char* AD, int AD_size, int& padded_size); 
 
         // GHASH function
         static void GHASH(unsigned char* prev_g, unsigned char* input, int input_index, const unsigned char* HASH_SUBKEY);
