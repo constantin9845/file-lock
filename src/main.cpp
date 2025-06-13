@@ -275,7 +275,7 @@ int main(int argc, char const *argv[]){
 
 			std::cout<<"-- "<<path<<std::endl;
 
-			fileHandler::AES_GCM(path, key, replaceFlag, keySize, outputFilePath, authTag, AD);
+			fileHandler::HW_AES_GCM(path, key, replaceFlag, keySize, outputFilePath, authTag, AD);
 
 
 			auto end = std::chrono::high_resolution_clock::now();
@@ -356,7 +356,7 @@ int main(int argc, char const *argv[]){
 			auto start = std::chrono::high_resolution_clock::now();
 			
 
-			fileHandler::AES_GCM_DECRYPTION(path, k, keySize, authTag, AD=="y");
+			fileHandler::HW_AES_GCM_DECRYPTION(path, k, keySize, authTag, AD=="y");
 
 			
 			auto end = std::chrono::high_resolution_clock::now();

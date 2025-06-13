@@ -2,16 +2,15 @@
 
 ## To Do
 
-- Some tags failing authentication when decrypting large folders.
-- HW functions
+- segmentation fault, run gdb again. likely multiplication
 
 
 ## Optimize
 
-- Authentication very slow -> only with hw accel.
-- Other, faster method for pure software implementation?
+- Authentication very slow - def needs hw function
+- Auth. consumer small amount of conpute, should run parallel with encryption?
 
-- Can write to file and GMAC be multithreaded?
+- Can write to file and auth be multithreaded?
 
 - add docs.
 
@@ -24,4 +23,4 @@
 
 
 
-
+00010000

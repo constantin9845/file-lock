@@ -375,6 +375,25 @@ void fileHandler::worker(unsigned char* buffer, int startBlock, int endBlock, un
 	}
 }
 
+void fileHandler::HW_worker(unsigned char* buffer, int startBlock, int endBlock, unsigned char* key, int keySize, const unsigned char* baseNonce){
+
+	for(int block = startBlock; block < endBlock; block++){
+		int i = 12 + block * 16;
+
+		unsigned char output[16];
+		unsigned char nonce[16];
+
+		std::memcpy(nonce, baseNonce, 16);
+		setCounterInNonce(nonce, block); // block number = counter
+
+		AES::HW_ENCRYPT_CTR(nonce, key, keySize, output);
+
+		for(int j = 0; j < 16; j++){
+			buffer[i + j] ^= output[j];
+		}
+	}
+}
+
 // GCM encryption
 void fileHandler::AES_GCM(const std::string& path, unsigned char* key, const bool& replaceFlag, const int& keySize, const std::string& outputFilePath, bool authTag, std::string AD){
 
@@ -706,3 +725,331 @@ void fileHandler::AES_GCM_DECRYPTION(const std::string& path, unsigned char* key
 }
 
 
+void fileHandler::HW_AES_GCM(const std::string& path, unsigned char* key, const bool& replaceFlag, const int& keySize, const std::string& outputFilePath, bool authTag, std::string AD){
+
+	// Read file 
+
+	// input file stream
+	std::ifstream inputFile(path, std::ios::binary);
+
+	std::string outputPath;
+
+	// Construct output path
+	if(replaceFlag){
+		outputPath = path;
+	}
+	else{
+		outputPath = outputFilePath;
+	}
+
+
+	if(!inputFile){
+		std::cout<<"Error opening file.";
+		exit(2);
+	}
+
+
+	// get size of file
+	inputFile.seekg(0, std::ios::end);
+	std::streamsize size = inputFile.tellg();
+	inputFile.seekg(0, std::ios::beg);
+
+	// padding needed for AES
+	std::streamsize padding = 16-(size%16);
+
+
+	// Generate nonce || counter = 0
+	unsigned char* nonce = genKey(128);
+
+	// Apply counter = 0 to nonce
+	for(int i = 12; i<15; i++){
+		nonce[i] = 0x00;
+	}
+
+	nonce[15] = 0x01;
+
+
+	// Buffer to store data + Apply Padding, PKC#7
+	unsigned char* buffer = new unsigned char[size + padding + 12];
+
+	// Store nonce in buffer
+	for(int i = 0; i < 12; i++){
+		buffer[i] = nonce[i];
+	}
+
+	// read data into buffer
+	if(!inputFile.read(reinterpret_cast<char*>(buffer+12),size)){
+		std::cout<<"Could not read data into buffer";
+		delete[] buffer;
+		exit(2);
+	}
+
+	// Read padding bytes into buffer
+	for(int i = size+12; i < size+padding+12; i++){
+		buffer[i] = static_cast<unsigned char>(padding);
+	}
+
+
+	// Parallell Encryption
+	unsigned int number_of_threads = std::thread::hardware_concurrency(); 
+	int totalBlocks = (size + padding) / 16;
+
+	if(number_of_threads == 0) number_of_threads = 4;
+	number_of_threads = std::min<unsigned int>(number_of_threads, totalBlocks);
+
+	int blocksPerThread = totalBlocks / number_of_threads;
+	int remainder = totalBlocks % number_of_threads;
+
+	std::vector<std::thread> threads;
+	int currentBlock = 0;
+
+	for(unsigned int t = 0; t < number_of_threads; t++){
+		int blocksForThread = blocksPerThread + (t < remainder ? 1 : 0);
+		int start = currentBlock;
+		int end = currentBlock + blocksForThread;
+
+		threads.emplace_back(HW_worker, buffer,start,end,key,keySize,nonce);
+		currentBlock = end;
+
+	}
+
+	for(auto& th : threads){
+		th.join();
+	}
+
+
+
+	// delete old file
+	if(replaceFlag){
+		std::cout<<"---- Remove original file:"<<std::endl;
+		inputFile.close();
+		std::filesystem::remove(path);
+	}
+	else{
+		inputFile.close();
+	}
+
+	// output file stream
+	std::ofstream outputFile(outputPath, std::ios::binary);
+
+	if(!outputFile.write(reinterpret_cast<char*>(buffer), size+padding+12)){
+		delete[] buffer;
+		delete[] nonce;
+		std::cout<<"error write";
+		exit(3);
+	}
+
+	outputFile.close();
+
+	if(authTag){
+		std::cout<<"---- Creating Authentication Tag"<<std::endl;
+
+		// Generate Authentication Tag
+		unsigned char* TAG = new unsigned char[16]{0};
+		unsigned char* ADD;
+		
+		if(AD == "n"){
+			ADD = new unsigned char[16]{0};
+			AES::HW_auth_tag(nonce, key, keySize, ADD, 0, buffer, size+padding+12, TAG);
+		}
+		else{
+			ADD = new unsigned char[AD.size()]{0};
+			memcpy(ADD, AD.data(), AD.size());
+
+			AES::HW_auth_tag(nonce, key, keySize, ADD, AD.size(), buffer, size+padding+12, TAG);
+		}
+
+		// output Auth TAG file stream
+		std::ofstream outputFileTag(outputPath+"_TAG", std::ios::binary);
+
+		if(!outputFileTag.write(reinterpret_cast<char*>(TAG), 16)){
+			std::cout<<"error write TAG";
+		}
+
+		outputFileTag.close();
+
+		// Write AD to a text file
+		if(AD != "n"){
+			std::filesystem::path t(outputPath);
+			std::string AD_path = (t.parent_path() / t.stem()).string();
+
+			std::ofstream outputAD;
+			outputAD.open(AD_path+"_Additional_Message.txt");
+			outputAD<<AD;
+			outputAD.close();
+		}
+
+		delete[] TAG;
+	}
+
+	delete[] nonce;
+	delete[] buffer;
+}
+
+
+void fileHandler::HW_AES_GCM_DECRYPTION(const std::string& path, unsigned char* key, const int& keySize, bool authTag, bool AD){
+
+	// Read file 
+
+	// input file stream
+	std::ifstream inputFile(path, std::ios::binary);
+
+	std::string outputPath = path;
+
+	if(!inputFile){
+		std::cout<<"Error opening file.";
+		exit(2);
+	}
+
+
+	// get size of file
+	inputFile.seekg(0, std::ios::end);
+	std::streamsize size = inputFile.tellg();
+	inputFile.seekg(0, std::ios::beg);
+
+
+	// Get nonce
+	unsigned char* nonce;
+	nonce = new unsigned char[16]{0};
+
+	// Buffer to store data 
+	unsigned char* buffer = new unsigned char[size];
+
+
+	// read data into buffer
+	if(!inputFile.read(reinterpret_cast<char*>(buffer),size)){
+		std::cout<<"Could not read data into buffer";
+		delete[] buffer;
+		exit(2);
+	}
+
+	// load nonce
+	for(int i = 0; i < 12; i++){
+		nonce[i] = buffer[i];
+	}
+
+	// Authenticate Tag
+	if(authTag){
+		std::cout<<"---- Verify Authentication Tag"<<std::endl;
+		std::filesystem::path p(path);
+		std::string TAG_path = p.string()+"_TAG";
+		std::string AD_path = ((p.parent_path() / p.stem()).string())+"_Additional_Message.txt";
+
+		std::ifstream tag_file(TAG_path, std::ios::binary);
+		unsigned char* CLAIMED_TAG = new unsigned char[16];
+
+		if(!tag_file){
+			std::cout<<"Error opening tag.";
+			exit(2);
+		}
+
+		// read tag
+		if(!tag_file.read(reinterpret_cast<char*>(CLAIMED_TAG),16)){
+			std::cout<<"Could not read TAG";
+			delete[] buffer;
+			delete[] CLAIMED_TAG;
+			delete[] nonce;
+			exit(2);
+		}
+
+		tag_file.close();
+
+		unsigned char* TAG = new unsigned char[16]{0};
+		unsigned char* ADD; 
+
+		if(AD){
+			std::ifstream temp (AD_path);
+			std::string content((std::istreambuf_iterator<char>(temp)),std::istreambuf_iterator<char>());
+
+			temp.close();
+
+			ADD = new unsigned char[content.size()];
+
+			memcpy(ADD,content.data(),content.size());
+
+			AES::HW_auth_tag(nonce, key, keySize, ADD, content.size(), buffer, size, TAG);
+		}
+		else{
+			ADD = new unsigned char[16]{0};
+			AES::HW_auth_tag(nonce, key, keySize, ADD, 0, buffer, size, TAG);
+		}
+
+		// Compare tags
+		if(memcmp(TAG, CLAIMED_TAG, 16) != 0){
+			std::string t;
+			std::cout<<"---- Authentication Tag for "<<path<<" FAILED."<<std::endl;
+
+			while(t != "y" && t != "n"){
+				std::cout<<"---- Skip Decrypting File? (y or n): ";
+				std::cin>>t;
+			}
+			
+			if(t == "y"){
+
+				delete[] buffer;
+				delete[] CLAIMED_TAG;
+				delete[] nonce;
+				delete[] TAG;
+
+				return;
+			}
+		}
+		else{
+			std::string t;
+			std::cout<<"---- Tag for "<<path<<" AUTHENTICATED."<<std::endl;
+
+			std::filesystem::remove(TAG_path);
+			std::filesystem::remove(AD_path);
+
+			delete[] CLAIMED_TAG;
+			delete[] TAG;
+		}
+	}
+
+	// Parallell Decryption
+	unsigned int number_of_threads = std::thread::hardware_concurrency(); 
+	int totalBlocks = size / 16;
+
+	if(number_of_threads == 0) number_of_threads = 4;
+	number_of_threads = std::min<unsigned int>(number_of_threads, totalBlocks);
+
+	int blocksPerThread = totalBlocks / number_of_threads;
+	int remainder = totalBlocks % number_of_threads;
+
+	std::vector<std::thread> threads;
+	int currentBlock = 0;
+
+	for(unsigned int t = 0; t < number_of_threads; t++){
+		int blocksForThread = blocksPerThread + (t < remainder ? 1 : 0);
+		int start = currentBlock;
+		int end = currentBlock + blocksForThread;
+
+		threads.emplace_back(HW_worker, buffer,start,end,key,keySize,nonce);
+		currentBlock = end;
+	}
+
+	for(auto& th : threads){
+		th.join();
+	}
+
+	// Get padding
+	std::streamsize padding = buffer[size-1];
+
+	inputFile.close();
+	std::filesystem::remove(path);
+
+	// output file stream
+	std::ofstream outputFile(outputPath, std::ios::binary);
+
+	if(!outputFile.write(reinterpret_cast<char*>(buffer+12), size-padding)){
+		delete[] buffer;
+		delete[] nonce;
+		std::cout<<"error write";
+		exit(3);
+	}
+
+	outputFile.close();
+
+	delete[] nonce;
+	delete[] buffer;
+}

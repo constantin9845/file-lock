@@ -1,5 +1,10 @@
- #include <iostream>
+#include <iostream>
 #include <bitset>
+
+#include <wmmintrin.h>    // AES-NI intrinsics
+#include <emmintrin.h>    // SSE2
+#include <tmmintrin.h>    // SSSE3
+#include <smmintrin.h>
 
 class AES{
     public:
@@ -9,6 +14,10 @@ class AES{
 
         // Calculate Authentication Tag
         static void auth_tag(unsigned char* nonce, unsigned char* key, const int& keySize, unsigned char* AD, int AD_size, unsigned char* Y, const int Y_size, unsigned char* TAG);
+
+        static void HW_auth_tag(unsigned char* nonce, unsigned char* key, const int& keySize, unsigned char* AD, int AD_size, unsigned char* Y, const int Y_size, unsigned char* TAG);
+
+        static void HW_ENCRYPT_CTR(unsigned char* nonce, unsigned char* key, const int& keySize, unsigned char output[]);
 
 
     private:
@@ -79,11 +88,15 @@ class AES{
         // 128 Key scheduler
         static unsigned int* genKey128(unsigned char K[]);
 
+        static __m128i* genKey128_HW(__m128i key);
+
         // 192 Key scheduler
         static unsigned int* genKey192(unsigned char K[]);
 
         // 256 Key scheduler
         static unsigned int* genKey256(unsigned char K[]);
+
+        static __m128i* genKey256_HW(__m128i key1, __m128i key2);
 
         // G function for key expansion
         static unsigned int g(unsigned int w, unsigned int& gConst);
@@ -104,11 +117,17 @@ class AES{
         // GHASH function
         static void GHASH(unsigned char* prev_g, unsigned char* input, int input_index, const unsigned char* HASH_SUBKEY);
 
+        static void HW_GHASH(unsigned char* prev_g, unsigned char* input, int input_index, const unsigned char* HASH_SUBKEY);
+
         // GHASH Multiplication
         static void GALOIS_MULTIPLICATION(unsigned char* result, const unsigned char* HASH_SUBKEY);
 
 };
 
+const unsigned char rcon[10] = {
+    0x01, 0x02, 0x04, 0x08, 0x10,
+    0x20, 0x40, 0x80, 0x1B, 0x36
+};
 
 // Byte substitution table
 const unsigned char SBOX[16][16] = {

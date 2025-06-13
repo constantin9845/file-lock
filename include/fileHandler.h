@@ -29,11 +29,14 @@ public:
 	*/
 	static void AES_GCM(const std::string& path, unsigned char* key, const bool& replaceFlag, const int& keySize, const std::string& outputFilePath, bool authTag, std::string AD);
 
+	static void HW_AES_GCM(const std::string& path, unsigned char* key, const bool& replaceFlag, const int& keySize, const std::string& outputFilePath, bool authTag, std::string AD);
 
 	/*
 	    GCM decryption
 	*/
 	static void AES_GCM_DECRYPTION(const std::string& path, unsigned char* key, const int& keySize, bool authTag, bool AD);
+
+	static void HW_AES_GCM_DECRYPTION(const std::string& path, unsigned char* key, const int& keySize, bool authTag, bool AD);
 
 
 
@@ -79,6 +82,8 @@ public:
 	static void setCounterInNonce(unsigned char* nonce, uint32_t counter);
 
 	static void worker(unsigned char* buffer, int startBlock, int endBlock, unsigned char* key, int keySize, const unsigned char* baseNonce);
+
+	static void HW_worker(unsigned char* buffer, int startBlock, int endBlock, unsigned char* key, int keySize, const unsigned char* baseNonce);
 
 private:
 	
