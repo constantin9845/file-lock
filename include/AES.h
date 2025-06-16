@@ -17,7 +17,7 @@ class AES{
 
         static void HW_auth_tag(unsigned char* nonce, unsigned char* key, const int& keySize, unsigned char* AD, int AD_size, unsigned char* Y, const int Y_size, unsigned char* TAG);
 
-        static void HW_ENCRYPT_CTR(unsigned char* nonce, unsigned char* key, const int& keySize, unsigned char output[]);
+        static void HW_ENCRYPT_CTR(unsigned char* nonce, unsigned char* key, const int& keySize, unsigned char* buffer);
 
 
     private:

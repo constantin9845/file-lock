@@ -812,7 +812,7 @@ void AES::GHASH(unsigned char* prev_g, unsigned char* input, int input_index, co
 void AES::HW_GHASH(unsigned char* prev_g, unsigned char* input, int input_index, const unsigned char* HASH_SUBKEY){
 
 	__m128i prev_g_temp = _mm_loadu_si128(reinterpret_cast<const __m128i*>(prev_g));
-	__m128i input_temp = _mm_loadu_si128(reinterpret_cast<const __m128i*>(input[input_index]));
+	__m128i input_temp = _mm_loadu_si128(reinterpret_cast<const __m128i*>(input+input_index));
 	__m128i HASH_SUBKEY_temp = _mm_loadu_si128(reinterpret_cast<const __m128i*>(HASH_SUBKEY));
 
 	prev_g_temp = _mm_xor_si128(prev_g_temp, input_temp);
@@ -1037,7 +1037,7 @@ void AES::encryptCTR(unsigned char* nonce, unsigned char* key, const int& keySiz
 }
 
 // HW CTR encryption
-void AES::HW_ENCRYPT_CTR(unsigned char* nonce, unsigned char* key, const int& keySize, unsigned char output[]){
+void AES::HW_ENCRYPT_CTR(unsigned char* nonce, unsigned char* key, const int& keySize, unsigned char* buffer){
 
 	// load none
 	__m128i block = _mm_loadu_si128(reinterpret_cast<const __m128i*>(nonce));
@@ -1073,8 +1073,13 @@ void AES::HW_ENCRYPT_CTR(unsigned char* nonce, unsigned char* key, const int& ke
 	// last round 
 	block = _mm_aesenclast_si128(block, expanded_key[(keySize == 128 ? 10 : 14)]);
 
-	// store back in nonce
-	_mm_storeu_si128(reinterpret_cast<__m128i*>(nonce), block);
+	// XOR with text/ciphertext
+	__m128i temp_buffer = _mm_loadu_si128(reinterpret_cast<const __m128i*>(buffer));
+
+	block = _mm_xor_si128(block, temp_buffer);
+
+	// store in output
+	_mm_storeu_si128(reinterpret_cast<__m128i*>(buffer), block);
 
 	delete[] expanded_key;
 	expanded_key = nullptr;

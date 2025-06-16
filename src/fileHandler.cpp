@@ -386,11 +386,7 @@ void fileHandler::HW_worker(unsigned char* buffer, int startBlock, int endBlock,
 		std::memcpy(nonce, baseNonce, 16);
 		setCounterInNonce(nonce, block); // block number = counter
 
-		AES::HW_ENCRYPT_CTR(nonce, key, keySize, output);
-
-		for(int j = 0; j < 16; j++){
-			buffer[i + j] ^= output[j];
-		}
+		AES::HW_ENCRYPT_CTR(nonce, key, keySize, buffer+i);
 	}
 }
 

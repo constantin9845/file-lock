@@ -2,15 +2,13 @@
 
 ## To Do
 
-- segmentation fault, run gdb again. likely multiplication
+### Optimization: 
+
+- memcpy and XOR --> __mm__xor_si128
+- check for unecessary I/O --> disk is overloaded during process : store im RAM? start processing straight away, no re-reading from buffer.
+- 70mb/s ---> min 500mb/s
 
 
-## Optimize
-
-- Authentication very slow - def needs hw function
-- Auth. consumer small amount of conpute, should run parallel with encryption?
-
-- Can write to file and auth be multithreaded?
 
 - add docs.
 
@@ -23,4 +21,3 @@
 
 
 
-00010000

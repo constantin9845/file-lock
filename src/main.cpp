@@ -325,7 +325,7 @@ int main(int argc, char const *argv[]){
 						std::cout<<"-- "<<entry.path().string()<<std::endl;
 
 						// encrypt entry
-						fileHandler::AES_GCM(entry.path().string(), key, replaceFlag, keySize, outputPath, authTag, AD);
+						fileHandler::HW_AES_GCM(entry.path().string(), key, replaceFlag, keySize, outputPath, authTag, AD);
 					}
 				}
 
@@ -395,7 +395,7 @@ int main(int argc, char const *argv[]){
 						// logs
 						std::cout<<"-- "<<entry.path().string()<<std::endl;
 						
-						fileHandler::AES_GCM_DECRYPTION(entry.path().string(), k, keySize, authTag, (AD == "y"));
+						fileHandler::HW_AES_GCM_DECRYPTION(entry.path().string(), k, keySize, authTag, (AD == "y"));
 						
 					}
 				}
