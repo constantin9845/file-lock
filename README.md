@@ -4,9 +4,7 @@
 
 ### Optimization: 
 
-- memcpy and XOR --> __mm__xor_si128
-- check for unecessary I/O --> disk is overloaded during process : store im RAM? start processing straight away, no re-reading from buffer.
-- 70mb/s ---> min 500mb/s
+- bottleneck: buffer writing to file (+95% of total time)
 
 
 

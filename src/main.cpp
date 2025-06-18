@@ -188,6 +188,8 @@ void menu(std::string& file, bool& directionFlag, int& keySize, std::string& key
 
 int main(int argc, char const *argv[]){
 
+	std::ios_base::sync_with_stdio(false);
+
 	std::string path = "";
 	bool directionFlag;
 	int keySize;

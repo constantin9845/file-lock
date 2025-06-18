@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <thread>
 #include <cstring>
+#include <fcntl.h>
 
 #ifndef FH_H
 #define FH_H
@@ -16,6 +17,11 @@
 #ifdef _WIN32
 	#include <random>
 	#include <windows.h>
+#else
+	#include <unistd.h>
+	#include <errno.h>
+	#include <sys/types.h>
+	#include <sys/stat.h>
 #endif
 
 
@@ -83,7 +89,7 @@ public:
 
 	static void worker(unsigned char* buffer, int startBlock, int endBlock, unsigned char* key, int keySize, const unsigned char* baseNonce);
 
-	static void HW_worker(unsigned char* buffer, int startBlock, int endBlock, unsigned char* key, int keySize, const unsigned char* baseNonce);
+	static void HW_worker(unsigned char* buffer, int startBlock, int endBlock, unsigned char* key, int keySize, unsigned char* baseNonce);
 
 private:
 	

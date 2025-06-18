@@ -346,6 +346,74 @@ void fileHandler::constructPath(const std::string& filePath){
 	std::filesystem::create_directories(temp);
 }
 
+// File write
+void writeFile(const std::string path, unsigned char* buffer, size_t size){
+
+#ifdef _WIN32
+	HANDLE hFile = CreateFileA(
+		path.c_str(),
+		GENERIC_WRITE,
+		0,
+		NULL,
+		CREATE_ALWAYS,
+		FILE_ATTRIBUTE_NORMAL,
+		NULL
+	);
+
+	if(hFile == INVALID_HANDLE_VALUE){
+		std::cerr << "CreateFile failed: " << GetLastError() << "\n";
+		return;
+	}
+
+	LARGE_INTEGER liSize;
+	liSize.QuadPart = size;
+
+	if (!SetFilePointerEx(hFile, liSize, NULL, FILE_BEGIN) || !SetEndOfFile(hFile)) {
+        std::cerr << "Preallocation failed: " << GetLastError() << "\n";
+        CloseHandle(hFile);
+		return;
+    }
+
+	// Return to beginning
+    liSize.QuadPart = 0;
+    SetFilePointerEx(hFile, liSize, NULL, FILE_BEGIN);
+
+    DWORD bytesWritten = 0;
+    if (!WriteFile(hFile, buffer, static_cast<DWORD>(size), &bytesWritten, NULL) || bytesWritten != size) {
+        std::cerr << "WriteFile failed: " << GetLastError() << "\n";
+        CloseHandle(hFile);
+        return;
+    }
+
+    CloseHandle(hFile);
+#else
+
+	int fd = open(path.c_str(), O_CREAT | O_WRONGLY | O_TRUNC, 0644);
+	if(fd < 0){
+		std::cerr << "open failed: " << strerror(errno) << "\n";
+        return;
+	}
+
+	// Preallocate space (Linux only)
+    if (posix_fallocate(fd, 0, size) != 0) {
+        std::cerr << "posix_fallocate failed: " << strerror(errno) << "\n";
+        close(fd);
+        return false;
+    }
+
+    ssize_t written = write(fd, buffer, size);
+    if (written < 0 || static_cast<size_t>(written) != size) {
+        std::cerr << "write failed: " << strerror(errno) << "\n";
+        close(fd);
+        return false;
+    }
+
+    close(fd);
+
+#endif
+
+	return;
+}
 
 // update counter
 void fileHandler::setCounterInNonce(unsigned char* nonce, uint32_t counter){
@@ -375,7 +443,7 @@ void fileHandler::worker(unsigned char* buffer, int startBlock, int endBlock, un
 	}
 }
 
-void fileHandler::HW_worker(unsigned char* buffer, int startBlock, int endBlock, unsigned char* key, int keySize, const unsigned char* baseNonce){
+void fileHandler::HW_worker(unsigned char* buffer, int startBlock, int endBlock, unsigned char* key, int keySize, unsigned char* baseNonce){
 
 	for(int block = startBlock; block < endBlock; block++){
 		int i = 12 + block * 16;
@@ -387,6 +455,7 @@ void fileHandler::HW_worker(unsigned char* buffer, int startBlock, int endBlock,
 		setCounterInNonce(nonce, block); // block number = counter
 
 		AES::HW_ENCRYPT_CTR(nonce, key, keySize, buffer+i);
+
 	}
 }
 
@@ -785,13 +854,12 @@ void fileHandler::HW_AES_GCM(const std::string& path, unsigned char* key, const 
 		buffer[i] = static_cast<unsigned char>(padding);
 	}
 
-
 	// Parallell Encryption
 	unsigned int number_of_threads = std::thread::hardware_concurrency(); 
 	int totalBlocks = (size + padding) / 16;
 
 	if(number_of_threads == 0) number_of_threads = 4;
-	number_of_threads = std::min<unsigned int>(number_of_threads, totalBlocks);
+	number_of_threads = std::min<unsigned int>(number_of_threads, totalBlocks-1);
 
 	int blocksPerThread = totalBlocks / number_of_threads;
 	int remainder = totalBlocks % number_of_threads;
@@ -814,7 +882,6 @@ void fileHandler::HW_AES_GCM(const std::string& path, unsigned char* key, const 
 	}
 
 
-
 	// delete old file
 	if(replaceFlag){
 		std::cout<<"---- Remove original file:"<<std::endl;
@@ -825,6 +892,10 @@ void fileHandler::HW_AES_GCM(const std::string& path, unsigned char* key, const 
 		inputFile.close();
 	}
 
+
+	auto start = std::chrono::high_resolution_clock::now();
+
+	
 	// output file stream
 	std::ofstream outputFile(outputPath, std::ios::binary);
 
@@ -834,8 +905,17 @@ void fileHandler::HW_AES_GCM(const std::string& path, unsigned char* key, const 
 		std::cout<<"error write";
 		exit(3);
 	}
-
 	outputFile.close();
+	
+
+	//writeFile(outputPath, buffer, size+padding+12);
+
+	auto end = std::chrono::high_resolution_clock::now();
+
+	auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+
+	std::cout<<"Writing to file finished in : "<<duration.count() << " ms"<<std::endl;
+
 
 	if(authTag){
 		std::cout<<"---- Creating Authentication Tag"<<std::endl;
