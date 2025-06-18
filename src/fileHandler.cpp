@@ -349,70 +349,24 @@ void fileHandler::constructPath(const std::string& filePath){
 // File write
 void writeFile(const std::string path, unsigned char* buffer, size_t size){
 
-#ifdef _WIN32
-	HANDLE hFile = CreateFileA(
-		path.c_str(),
-		GENERIC_WRITE,
-		0,
-		NULL,
-		CREATE_ALWAYS,
-		FILE_ATTRIBUTE_NORMAL,
-		NULL
-	);
+	FILE* file = fopen(path.c_str(), "wb");
 
-	if(hFile == INVALID_HANDLE_VALUE){
-		std::cerr << "CreateFile failed: " << GetLastError() << "\n";
+	if(!file){
+		perror("fopen failed");
 		return;
 	}
 
-	LARGE_INTEGER liSize;
-	liSize.QuadPart = size;
-
-	if (!SetFilePointerEx(hFile, liSize, NULL, FILE_BEGIN) || !SetEndOfFile(hFile)) {
-        std::cerr << "Preallocation failed: " << GetLastError() << "\n";
-        CloseHandle(hFile);
-		return;
-    }
-
-	// Return to beginning
-    liSize.QuadPart = 0;
-    SetFilePointerEx(hFile, liSize, NULL, FILE_BEGIN);
-
-    DWORD bytesWritten = 0;
-    if (!WriteFile(hFile, buffer, static_cast<DWORD>(size), &bytesWritten, NULL) || bytesWritten != size) {
-        std::cerr << "WriteFile failed: " << GetLastError() << "\n";
-        CloseHandle(hFile);
+	size_t written = fwrite(buffer, 1, size, file);
+	if (written != size) {
+        perror("fwrite failed");
+        fclose(file);
         return;
     }
 
-    CloseHandle(hFile);
-#else
-
-	int fd = open(path.c_str(), O_CREAT | O_WRONGLY | O_TRUNC, 0644);
-	if(fd < 0){
-		std::cerr << "open failed: " << strerror(errno) << "\n";
+    if (fclose(file) != 0) {
+        perror("fclose failed");
         return;
-	}
-
-	// Preallocate space (Linux only)
-    if (posix_fallocate(fd, 0, size) != 0) {
-        std::cerr << "posix_fallocate failed: " << strerror(errno) << "\n";
-        close(fd);
-        return false;
     }
-
-    ssize_t written = write(fd, buffer, size);
-    if (written < 0 || static_cast<size_t>(written) != size) {
-        std::cerr << "write failed: " << strerror(errno) << "\n";
-        close(fd);
-        return false;
-    }
-
-    close(fd);
-
-#endif
-
-	return;
 }
 
 // update counter
@@ -455,7 +409,6 @@ void fileHandler::HW_worker(unsigned char* buffer, int startBlock, int endBlock,
 		setCounterInNonce(nonce, block); // block number = counter
 
 		AES::HW_ENCRYPT_CTR(nonce, key, keySize, buffer+i);
-
 	}
 }
 
@@ -896,6 +849,7 @@ void fileHandler::HW_AES_GCM(const std::string& path, unsigned char* key, const 
 	auto start = std::chrono::high_resolution_clock::now();
 
 	
+	/*
 	// output file stream
 	std::ofstream outputFile(outputPath, std::ios::binary);
 
@@ -906,9 +860,9 @@ void fileHandler::HW_AES_GCM(const std::string& path, unsigned char* key, const 
 		exit(3);
 	}
 	outputFile.close();
-	
+	*/
 
-	//writeFile(outputPath, buffer, size+padding+12);
+	writeFile(outputPath, buffer+size, padding+12);
 
 	auto end = std::chrono::high_resolution_clock::now();
 
