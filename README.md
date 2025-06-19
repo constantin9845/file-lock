@@ -2,16 +2,13 @@
 
 ## To Do
 
-### Optimization: 
-
-- bottleneck: buffer writing to file (+95% of total time): 
--       Different write methods perform same (1GB - 12s)
--       Need concurrent write with threads.
--       
-
 - MAC/LINUX hardware aes
+-       ARM - no key expansions functions
+-       Has GHASH - vmull_p64
 
 - add docs.
+
+- Test doc to report user bottlenecks
 
 ## Additions
 

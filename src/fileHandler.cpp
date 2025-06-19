@@ -849,7 +849,7 @@ void fileHandler::HW_AES_GCM(const std::string& path, unsigned char* key, const 
 	auto start = std::chrono::high_resolution_clock::now();
 
 	
-	/*
+	
 	// output file stream
 	std::ofstream outputFile(outputPath, std::ios::binary);
 
@@ -860,9 +860,8 @@ void fileHandler::HW_AES_GCM(const std::string& path, unsigned char* key, const 
 		exit(3);
 	}
 	outputFile.close();
-	*/
+	
 
-	writeFile(outputPath, buffer+size, padding+12);
 
 	auto end = std::chrono::high_resolution_clock::now();
 
