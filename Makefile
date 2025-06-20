@@ -23,8 +23,6 @@ all: $(TARGET)
 $(TARGET): $(OBJS)
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
-install:
-	
 
 clean:
 	$(CLEANO)
