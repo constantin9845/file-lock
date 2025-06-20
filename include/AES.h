@@ -1,29 +1,21 @@
- #include <iostream>
+#include <iostream>
 #include <bitset>
+
+#include <wmmintrin.h>   
 
 class AES{
     public:
 
-        // ECB Mode
-        // takes array of 16 bytes
-        // takes a second array of same size that contains the key
-        static void encrypt(unsigned char input[], unsigned char out[], unsigned char* KEY, int keySize);
+        // CTR Mode
+        static void encryptCTR(unsigned char* nonce, unsigned char* key, const int& keySize, unsigned char output[]);
 
+        // Calculate Authentication Tag
+        static void auth_tag(unsigned char* nonce, unsigned char* key, const int& keySize, unsigned char* AD, int AD_size, unsigned char* Y, const int Y_size, unsigned char* TAG);
 
-        // CBC Mode
-        // takes array of 16 bytes
-        // takes a second array of same size that contains the key
-        static void encryptCBC(unsigned char input[], unsigned char out[], unsigned char* KEY, unsigned char IV[], int keySize);
+        static void HW_auth_tag(unsigned char* nonce, unsigned char* key, const int& keySize, unsigned char* AD, int AD_size, unsigned char* Y, const int Y_size, unsigned char* TAG);
 
+        static void HW_ENCRYPT_CTR(unsigned char* nonce, unsigned char* key, const int& keySize, unsigned char* buffer);
 
-        // takes array of 16 bytes
-        // takes in 128 bit key
-        static void decrypt(unsigned char input[], unsigned char output[], unsigned char* KEY, int keySize);
-
-        // CBC Mode
-        // takes array of 16 bytes
-        // takes in 128 bit key
-        static void decryptCBC(unsigned char input[], unsigned char out[], unsigned char* KEY, unsigned char IV[], int keySize);
 
     private:
 
@@ -93,11 +85,15 @@ class AES{
         // 128 Key scheduler
         static unsigned int* genKey128(unsigned char K[]);
 
+        static __m128i* genKey128_HW(__m128i key);
+
         // 192 Key scheduler
         static unsigned int* genKey192(unsigned char K[]);
 
         // 256 Key scheduler
         static unsigned int* genKey256(unsigned char K[]);
+
+        static __m128i* genKey256_HW(__m128i key1, __m128i key2);
 
         // G function for key expansion
         static unsigned int g(unsigned int w, unsigned int& gConst);
@@ -112,9 +108,23 @@ class AES{
         // helper function to perform repetitive left shift
         static unsigned char GFmultiply2(unsigned char b);
 
+        // Pad AD to be multiple of 16bytes
+        static unsigned char* pad_AD(unsigned char* AD, int AD_size, int& padded_size); 
+
+        // GHASH function
+        static void GHASH(unsigned char* prev_g, unsigned char* input, int input_index, const unsigned char* HASH_SUBKEY);
+
+        static void HW_GHASH(unsigned char* prev_g, unsigned char* input, int input_index, const unsigned char* HASH_SUBKEY);
+
+        // GHASH Multiplication
+        static void GALOIS_MULTIPLICATION(unsigned char* result, const unsigned char* HASH_SUBKEY);
 
 };
 
+const unsigned char rcon[10] = {
+    0x01, 0x02, 0x04, 0x08, 0x10,
+    0x20, 0x40, 0x80, 0x1B, 0x36
+};
 
 // Byte substitution table
 const unsigned char SBOX[16][16] = {

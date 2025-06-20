@@ -7,6 +7,9 @@
 #include <filesystem>
 #include <system_error>
 #include <algorithm>
+#include <thread>
+#include <cstring>
+#include <fcntl.h>
 
 #ifndef FH_H
 #define FH_H
@@ -14,6 +17,11 @@
 #ifdef _WIN32
 	#include <random>
 	#include <windows.h>
+#else
+	#include <unistd.h>
+	#include <errno.h>
+	#include <sys/types.h>
+	#include <sys/stat.h>
 #endif
 
 
@@ -23,31 +31,20 @@ class fileHandler{
 public:
 
 	/*
-	    Encrypt single file 
+	    GCM encryption
 	*/
-	static void encryptFile(const std::string& path, const std::string& keyPath, const bool& replaceFlag, const bool& mode, const int& keySize);
+	static void AES_GCM(const std::string& path, unsigned char* key, const bool& replaceFlag, const int& keySize, const std::string& outputFilePath, bool authTag, std::string AD);
 
-
-	/*
-	    Encrypts all files in specified directory (includes subdirectory files)
-     	    Reconstructs file structure inside target folder
-	    Output into Downloads/target/ with key file
-	    @param path absolute filepath
-     	    @param outputPath path where target folder is placed
-	    @param dirFlag specifies directory 
-      	    @param key 128 bit key
-	*/
-	static void encryptFile(const std::string& path, std::string outputPath, unsigned char* key, bool mode, int keySize);
+	static void HW_AES_GCM(const std::string& path, unsigned char* key, const bool& replaceFlag, const int& keySize, const std::string& outputFilePath, bool authTag, std::string AD);
 
 	/*
-	    Decrypt single file with user provided key
-     	    key should be stored in a file -> first 16 bytes are read
-	    Output into same location as input file
-     	    -> INPUT FILE IS DELETED AFTER COMPLETION
-	    @param path absolute filepath
-     	    @param keyPath absolute path of key file
+	    GCM decryption
 	*/
-	static void decryptFile(const std::string& path, unsigned char* key, bool mode, int keySize);
+	static void AES_GCM_DECRYPTION(const std::string& path, unsigned char* key, const int& keySize, bool authTag, bool AD);
+
+	static void HW_AES_GCM_DECRYPTION(const std::string& path, unsigned char* key, const int& keySize, bool authTag, bool AD);
+
+
 
 	// Generate 128 bit key
 	// unix systems -> /dev/urandom , WIN -> random module
@@ -88,6 +85,11 @@ public:
 	// @param filePath absolute path of file
 	static void constructPath(const std::string& filePath);
 
+	static void setCounterInNonce(unsigned char* nonce, uint32_t counter);
+
+	static void worker(unsigned char* buffer, int startBlock, int endBlock, unsigned char* key, int keySize, const unsigned char* baseNonce);
+
+	static void HW_worker(unsigned char* buffer, int startBlock, int endBlock, unsigned char* key, int keySize, unsigned char* baseNonce);
 
 private:
 	

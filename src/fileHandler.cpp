@@ -1,466 +1,5 @@
 #include "../include/fileHandler.h"
 
-// Encrypt single file
-void fileHandler::encryptFile(const std::string& path, const std::string& keyPath, const bool& replaceFlag, const bool& mode, const int& keySize){
-
-	// input file stream
-	std::ifstream inputFile(path, std::ios::binary);
-
-	std::string outputPath;
-
-	if(replaceFlag){
-		outputPath = path;
-	}
-	else{
-		// construct output file path
-		outputPath = getOutputPath("_"+getFileName(path), true);
-	}
-
-	if(!inputFile){
-		std::cout<<"Error opening file.";
-		exit(2);
-	}
-
-	// get size of file
-	inputFile.seekg(0, std::ios::end);
-	std::streamsize size = inputFile.tellg();
-	inputFile.seekg(0, std::ios::beg);
-
-	// padding needed for AES
-	std::streamsize padding = 16-(size%16);
-
-	unsigned char* IV = nullptr;
-	unsigned char* key;
-
-	if(keyPath.length() == 0){
-		key = genKey(keySize);
-	}
-	else{
-		key = readKey(keyPath, keySize);
-	}
-
-	// array to store bytes 
-	unsigned char* buffer;
-
-	// CBC mode
-	if(mode){
-		// generate IV
-		IV = genKey(128);
-
-		// array to store bytes 
-		buffer = new unsigned char[size+padding+16];
-	}
-	else{
-		// array to store bytes 
-		buffer = new unsigned char[size+padding];
-	}
-
-	// read data into buffer
-	if(!inputFile.read(reinterpret_cast<char*>(buffer),size)){
-		std::cout<<"Could not read data into buffer";
-		delete[] buffer;
-		exit(2);
-	}
-		
-	// Encrypt in CBC mode
-	if(mode){
-		// ENCRYPTION OF FIRST BLOCK USES IV
-		// REST OF ENCRYPTION USES PREVIOUS BLOCK OUTPUT
-		for(int i = 0; i < size+padding; i+=16){
-			unsigned char temp[16];
-			unsigned char tempResult[16];
-
-			// load 16 bytes
-			for(int j = 0, index = i; j < 16; j++, index++){
-				temp[j] = buffer[index];
-			}
-
-			// first block -> IV
-			if(i == 0){
-				AES::encryptCBC(temp, tempResult, key, IV, keySize);
-			}
-			else{
-
-				// get previous output
-				unsigned char* prev = new unsigned char[16];
-				for(int l = i-16, s = 0; l < i; l++, s++){
-					prev[s] = buffer[l];
-				}
-
-				AES::encryptCBC(temp, tempResult, key, prev, keySize);
-				delete[] prev;
-			}
-
-			// store encrypted back in buffer
-			for(int j = 0, index = i; j < 16; j++, index++){
-				buffer[index] = tempResult[j];
-			}
-		}
-
-		// Store IV at end of buffer
-		for(int i = 0; i < 16; i++){
-			buffer[size+padding+i] = IV[i];
-		}
-
-	}
-	// Encrypt in ECB mode
-	else{
-		for(int i = 0; i < size+padding; i+=16){
-			unsigned char temp[16];
-			unsigned char tempResult[16];
-
-			// load 16 bytes
-			for(int j = 0, index = i; j < 16; j++, index++){
-				temp[j] = buffer[index];
-			}
-
-			AES::encrypt(temp, tempResult, key, keySize);
-
-
-			// store encrypted back in buffer
-			for(int j = 0, index = i; j < 16; j++, index++){
-				buffer[index] = tempResult[j];
-			}
-		}
-	}
-
-	
-
-	if(replaceFlag){
-		inputFile.close();
-		std::filesystem::remove(path);
-	}
-	else{
-		inputFile.close();
-	}
-
-	// output file stream
-	std::ofstream outputFile(outputPath, std::ios::binary);
-
-	// CBC mode
-	if(mode){
-		// write encrypted data to output file
-		if(!outputFile.write(reinterpret_cast<char*>(buffer), size+padding+16)){
-			delete[] buffer;
-			delete[] key;
-			delete[] IV;
-			std::cout<<"error write";
-			exit(3);
-		}
-	}
-	// ECB mode
-	else{
-		// write encrypted data to output file
-		if(!outputFile.write(reinterpret_cast<char*>(buffer), size+padding)){
-			delete[] buffer;
-			delete[] key;
-			std::cout<<"error write";
-			exit(3);
-		}
-	}
-
-	
-
-	// store new key together with file
-	if(keyPath.length() == 0){
-		storeKey(key, keySize);
-	}
-
-	outputFile.close();
-
-	delete[] key;
-	delete[] IV;
-	delete[] buffer;
-}
-
-// Function encrypts a file but is used for full directory encryption
-void fileHandler::encryptFile(const std::string& path, std::string outputPath, unsigned char* key, bool mode, int keySize){
-
-	// input stream
-	std::ifstream inputFile(path, std::ios::binary);
-
-
-	if(outputPath.length() == 0){
-		// create output path -> same as input
-		outputPath = path;
-	}
-
-	if(!inputFile){
-		std::cout<<"Error opening file.";
-		exit(2);
-	}
-
-	// get size of file
-	inputFile.seekg(0, std::ios::end);
-	std::streamsize size = inputFile.tellg();
-	inputFile.seekg(0, std::ios::beg);
-
-
-	// padding needed for AES
-	std::streamsize padding = 16-(size%16);
-
-	// array to store bytes 
-	unsigned char* buffer;
-	unsigned char* IV = nullptr;
-
-
-	if(mode){
-		// generate IV
-		IV = genKey(128);
-
-		buffer = new unsigned char[size+padding+16];
-	}
-	else{
-		buffer = new unsigned char[size+padding];
-	}
-
-	// read data into buffer
-	if(!inputFile.read(reinterpret_cast<char*>(buffer),size)){
-		std::cout<<"error";
-		delete[] buffer;
-		exit(2);
-	}
-
-	if(mode){
-		// ENCRYPTION OF FIRST BLOCK USES IV
-		// REST OF ENCRYPTION USES PREVIOUS BLOCK OUTPUT
-		for(int i = 0; i < size+padding; i+=16){
-			unsigned char temp[16];
-			unsigned char tempResult[16];
-
-			// load 16 bytes
-			for(int j = 0, index = i; j < 16; j++, index++){
-				temp[j] = buffer[index];
-			}
-
-			// first block -> IV
-			if(i == 0){
-				AES::encryptCBC(temp, tempResult, key, IV, keySize);
-			}
-			else{
-
-				// get previous output
-				unsigned char* prev = new unsigned char[16];
-				for(int l = i-16, s = 0; l < i; l++, s++){
-					prev[s] = buffer[l];
-				}
-
-				AES::encryptCBC(temp, tempResult, key, prev, keySize);
-				delete[] prev;
-			}
-
-			// store encrypted back in buffer
-			for(int j = 0, index = i; j < 16; j++, index++){
-				buffer[index] = tempResult[j];
-			}
-		}
-
-		// Store IV at end of buffer
-		for(int i = 0; i < 16; i++){
-			buffer[size+padding+i] = IV[i];
-		}
-	}
-	else{
-		for(int i = 0; i < size+padding; i+=16){
-			unsigned char temp[16];
-			unsigned char tempResult[16];
-
-			// load 16 bytes
-			for(int j = 0, index = i; j < 16; j++, index++){
-				temp[j] = buffer[index];
-			}
-
-			AES::encrypt(temp, tempResult, key, keySize);
-
-			// store encrypted back in buffer
-			for(int j = 0, index = i; j < 16; j++, index++){
-				buffer[index] = tempResult[j];
-			}
-		}
-	}
-
-	
-
-	if(outputPath == path){
-		inputFile.close();
-		std::filesystem::remove(path);
-	}
-	else{
-		inputFile.close();
-	}
-
-	// output file stream
-	std::ofstream outputFile(outputPath, std::ios::binary);
-
-	
-	if(mode){
-		// write data to output file
-		if(!outputFile.write(reinterpret_cast<char*>(buffer), size+padding+16)){
-			delete[] buffer;
-			delete[] IV;
-			std::cout<<"error write";
-			exit(3);
-		}
-	}
-	else{
-		// write data to output file
-		if(!outputFile.write(reinterpret_cast<char*>(buffer), size+padding)){
-			delete[] buffer;
-			delete[] IV;
-			std::cout<<"error write";
-			exit(3);
-		}
-	}
-	
-
-	outputFile.close();
-
-	delete[] IV;
-	delete[] buffer;
-}
-
-// Decrypt single file
-void fileHandler::decryptFile(const std::string& path, unsigned char* key, bool mode, int keySize){
-
-	// input stream
-	std::ifstream inputFile(path, std::ios::binary);
-
-	// create output path -> same as input ++ remove _
-	std::string outputPath = getDecryptionFileName(path);
-
-
-	if(!inputFile){
-		std::cout<<"Error opening file.";
-		exit(2);
-	}
-
-	// get size of file
-	inputFile.seekg(0, std::ios::end);
-	std::streamsize size = inputFile.tellg();
-	inputFile.seekg(0, std::ios::beg);
-
-	// array to store bytes 
-	unsigned char* buffer = new unsigned char[size];
-	unsigned char* output;
-
-	if(mode){
-		output = new unsigned char[size-16];
-	}
-	else{
-		output = new unsigned char[size];
-	}
-
-	// read data into buffer
-	if(!inputFile.read(reinterpret_cast<char*>(buffer),size)){
-		std::cout<<"error";
-		delete[] buffer;
-		exit(2);
-	}
-
-	unsigned char* IV;
-
-	if(mode){
-		IV = new unsigned char[16];
-
-		for(int i = size-16, k = 0; i < size; i++, k++){
-			IV[k] = buffer[i];
-		}
-
-		// decrypt buffer
-		for(int i = 0; i < size-16; i+=16){
-			unsigned char temp[16];
-			unsigned char tempResult[16];
-
-			// load 16 bytes
-			for(int j = 0, index = i; j < 16; j++, index++){
-				temp[j] = buffer[index];
-			}
-
-			// check if first block -> apply IV
-			if(i == 0){
-				AES::decryptCBC(temp, tempResult, key, IV, keySize);
-			}
-			else{
-
-				// get previous output
-				unsigned char* prev = new unsigned char[16];
-				for(int l = i-16, s = 0; l < i; l++, s++){
-					prev[s] = buffer[l];
-				}
-
-				AES::decryptCBC(temp, tempResult, key, prev, keySize);
-				delete[] prev;
-			}
-
-			// store decrypted text in output
-			for(int j = 0, index = i; j < 16; j++, index++){
-				if(i < size){
-					output[index] = tempResult[j];
-				}
-			}
-		}
-	}
-	// ECB mode
-	else{
-		// decrypt buffer
-		for(int i = 0; i < size; i+=16){
-			unsigned char temp[16];
-			unsigned char tempResult[16];
-
-			// load 16 bytes
-			for(int j = 0, index = i; j < 16; j++, index++){
-				temp[j] = buffer[index];
-			}
-
-			AES::decrypt(temp, tempResult, key, keySize);
-
-			// store decrypted text in output
-			for(int j = 0, index = i; j < 16; j++, index++){
-				if(i < size){
-					output[index] = tempResult[j];
-				}
-			}
-		}
-	}
-
-	
-	// delete old encrypted file
-	inputFile.close();
-	std::filesystem::remove(path);
-
-	// output stream
-	std::ofstream outputFile(outputPath, std::ios::binary);
-
-	if(mode){
-		// write to output file
-		if(!outputFile.write(reinterpret_cast<char*>(output), size-16)){
-			delete[] output;
-			delete[] buffer;
-			delete[] IV;
-			std::cout<<"Could not write buffer to output file";
-			exit(3);
-		}
-	}
-	else{
-		// write to output file
-		if(!outputFile.write(reinterpret_cast<char*>(output), size)){
-			delete[] output;
-			delete[] buffer;
-			delete[] IV;
-			std::cout<<"Could not write buffer to output file";
-			exit(3);
-		}
-	}
-
-	outputFile.close();
-
-	delete[] key;
-	delete[] buffer;
-	delete[] IV;
-	delete[] output;
-}
-
-
 // return filename given an absolute path
 std::string fileHandler::getFileName(const std::string& filePath){
 	// extract file name from file path
@@ -626,12 +165,54 @@ unsigned char* fileHandler::readKey(const std::string& path, const int& keySize)
 	return buffer;
 }
 
-// store key in key file
+// Create key file
 void fileHandler::storeKey(unsigned char* key, const int& keySize){
 
-	std::string outputPath = getOutputPath("_key", false);
+	std::string outputPath;
+
+#ifdef _WIN32
+
+	// get user name
+	const char* homeDir = std::getenv("USERPROFILE");
+
+	if(homeDir == nullptr){
+		std::cerr << "Failed to get USERPROFILE environment variable." << std::endl;
+        exit(1);
+	}
+
+	// construct target folder path
+	std::string targetFolder = std::string(homeDir) + "\\Downloads\\";
+
+
+
+// Mac/Linux
+#else
+
+	// get user name
+	const char* homeDir = std::getenv("HOME");
+
+	if(homeDir == nullptr){
+		std::cerr << "Failed to get HOME environment variable." << std::endl;
+		exit(1);
+	}
+
+	// create new folder to store file + key
+	std::string targetFolder = std::string(homeDir) + "/Downloads/";
+
+#endif
+
+	outputPath = targetFolder+"_key0";
+
+	// check if file already exists
+	int counter = 1;
+	while(std::filesystem::exists(outputPath)){
+		outputPath = outputPath.substr(0,outputPath.length()-1);
+		outputPath += std::to_string(counter++);
+	}
 
 	std::ofstream keyOutput(outputPath, std::ios::binary);
+
+
 
 	if(!keyOutput){
 		std::cout<<"key file output error";
@@ -765,3 +346,739 @@ void fileHandler::constructPath(const std::string& filePath){
 	std::filesystem::create_directories(temp);
 }
 
+// File write
+void writeFile(const std::string path, unsigned char* buffer, size_t size){
+
+	FILE* file = fopen(path.c_str(), "wb");
+
+	if(!file){
+		perror("fopen failed");
+		return;
+	}
+
+	size_t written = fwrite(buffer, 1, size, file);
+	if (written != size) {
+        perror("fwrite failed");
+        fclose(file);
+        return;
+    }
+
+    if (fclose(file) != 0) {
+        perror("fclose failed");
+        return;
+    }
+}
+
+// update counter
+void fileHandler::setCounterInNonce(unsigned char* nonce, uint32_t counter){
+	nonce[12] = (counter >> 24) & 0xFF;
+	nonce[13] = (counter >> 16) & 0xFF;
+	nonce[14] = (counter >> 8) & 0xFF;
+	nonce[15] = counter & 0xFF;
+}
+
+// Thread worker
+void fileHandler::worker(unsigned char* buffer, int startBlock, int endBlock, unsigned char* key, int keySize, const unsigned char* baseNonce){
+
+	for(int block = startBlock; block < endBlock; block++){
+		int i = 12 + block * 16;
+
+		unsigned char output[16];
+		unsigned char nonce[16];
+
+		std::memcpy(nonce, baseNonce, 16);
+		setCounterInNonce(nonce, block); // block number = counter
+
+		AES::encryptCTR(nonce, key, keySize, output);
+
+		for(int j = 0; j < 16; j++){
+			buffer[i + j] ^= output[j];
+		}
+	}
+}
+
+void fileHandler::HW_worker(unsigned char* buffer, int startBlock, int endBlock, unsigned char* key, int keySize, unsigned char* baseNonce){
+
+	for(int block = startBlock; block < endBlock; block++){
+		int i = 12 + block * 16;
+
+		unsigned char output[16];
+		unsigned char nonce[16];
+
+		std::memcpy(nonce, baseNonce, 16);
+		setCounterInNonce(nonce, block); // block number = counter
+
+		AES::HW_ENCRYPT_CTR(nonce, key, keySize, buffer+i);
+	}
+}
+
+// GCM encryption
+void fileHandler::AES_GCM(const std::string& path, unsigned char* key, const bool& replaceFlag, const int& keySize, const std::string& outputFilePath, bool authTag, std::string AD){
+
+	// Read file 
+
+	// input file stream
+	std::ifstream inputFile(path, std::ios::binary);
+
+	std::string outputPath;
+
+	// Construct output path
+	if(replaceFlag){
+		outputPath = path;
+	}
+	else{
+		outputPath = outputFilePath;
+	}
+
+
+	if(!inputFile){
+		std::cout<<"Error opening file.";
+		exit(2);
+	}
+
+
+	// get size of file
+	inputFile.seekg(0, std::ios::end);
+	std::streamsize size = inputFile.tellg();
+	inputFile.seekg(0, std::ios::beg);
+
+	// padding needed for AES
+	std::streamsize padding = 16-(size%16);
+
+
+	// Generate nonce || counter = 0
+	unsigned char* nonce = genKey(128);
+
+	// Apply counter = 0 to nonce
+	for(int i = 12; i<15; i++){
+		nonce[i] = 0x00;
+	}
+
+	nonce[15] = 0x01;
+
+
+	// Buffer to store data + Apply Padding, PKC#7
+	unsigned char* buffer = new unsigned char[size + padding + 12];
+
+	// Store nonce in buffer
+	for(int i = 0; i < 12; i++){
+		buffer[i] = nonce[i];
+	}
+
+	// read data into buffer
+	if(!inputFile.read(reinterpret_cast<char*>(buffer+12),size)){
+		std::cout<<"Could not read data into buffer";
+		delete[] buffer;
+		exit(2);
+	}
+
+	// Read padding bytes into buffer
+	for(int i = size+12; i < size+padding+12; i++){
+		buffer[i] = static_cast<unsigned char>(padding);
+	}
+
+
+	// Parallell Encryption
+	unsigned int number_of_threads = std::thread::hardware_concurrency(); 
+	int totalBlocks = (size + padding) / 16;
+
+	if(number_of_threads == 0) number_of_threads = 4;
+	number_of_threads = std::min<unsigned int>(number_of_threads, totalBlocks);
+
+	int blocksPerThread = totalBlocks / number_of_threads;
+	int remainder = totalBlocks % number_of_threads;
+
+	std::vector<std::thread> threads;
+	int currentBlock = 0;
+
+	for(unsigned int t = 0; t < number_of_threads; t++){
+		int blocksForThread = blocksPerThread + (t < remainder ? 1 : 0);
+		int start = currentBlock;
+		int end = currentBlock + blocksForThread;
+
+		threads.emplace_back(worker, buffer,start,end,key,keySize,nonce);
+		currentBlock = end;
+
+	}
+
+	for(auto& th : threads){
+		th.join();
+	}
+
+
+
+	// delete old file
+	if(replaceFlag){
+		std::cout<<"---- Remove original file:"<<std::endl;
+		inputFile.close();
+		std::filesystem::remove(path);
+	}
+	else{
+		inputFile.close();
+	}
+
+	// output file stream
+	std::ofstream outputFile(outputPath, std::ios::binary);
+
+	if(!outputFile.write(reinterpret_cast<char*>(buffer), size+padding+12)){
+		delete[] buffer;
+		delete[] nonce;
+		std::cout<<"error write";
+		exit(3);
+	}
+
+	outputFile.close();
+
+	if(authTag){
+		std::cout<<"---- Creating Authentication Tag"<<std::endl;
+
+		// Generate Authentication Tag
+		unsigned char* TAG = new unsigned char[16]{0};
+		unsigned char* ADD;
+		
+		if(AD == "n"){
+			ADD = new unsigned char[16]{0};
+			AES::auth_tag(nonce, key, keySize, ADD, 0, buffer, size+padding+12, TAG);
+		}
+		else{
+			ADD = new unsigned char[AD.size()]{0};
+			memcpy(ADD, AD.data(), AD.size());
+
+			AES::auth_tag(nonce, key, keySize, ADD, AD.size(), buffer, size+padding+12, TAG);
+		}
+
+		// output Auth TAG file stream
+		std::ofstream outputFileTag(outputPath+"_TAG", std::ios::binary);
+
+		if(!outputFileTag.write(reinterpret_cast<char*>(TAG), 16)){
+			std::cout<<"error write TAG";
+		}
+
+		outputFileTag.close();
+
+		// Write AD to a text file
+		if(AD != "n"){
+			std::filesystem::path t(outputPath);
+			std::string AD_path = (t.parent_path() / t.stem()).string();
+
+			std::ofstream outputAD;
+			outputAD.open(AD_path+"_Additional_Message.txt");
+			outputAD<<AD;
+			outputAD.close();
+		}
+
+		delete[] TAG;
+	}
+
+	delete[] nonce;
+	delete[] buffer;
+}
+
+// GCM decryption
+void fileHandler::AES_GCM_DECRYPTION(const std::string& path, unsigned char* key, const int& keySize, bool authTag, bool AD){
+
+	// Read file 
+
+	// input file stream
+	std::ifstream inputFile(path, std::ios::binary);
+
+	std::string outputPath = path;
+
+	if(!inputFile){
+		std::cout<<"Error opening file.";
+		exit(2);
+	}
+
+
+	// get size of file
+	inputFile.seekg(0, std::ios::end);
+	std::streamsize size = inputFile.tellg();
+	inputFile.seekg(0, std::ios::beg);
+
+
+	// Get nonce
+	unsigned char* nonce;
+	nonce = new unsigned char[16]{0};
+
+	// Buffer to store data 
+	unsigned char* buffer = new unsigned char[size];
+
+
+	// read data into buffer
+	if(!inputFile.read(reinterpret_cast<char*>(buffer),size)){
+		std::cout<<"Could not read data into buffer";
+		delete[] buffer;
+		exit(2);
+	}
+
+	// load nonce
+	for(int i = 0; i < 12; i++){
+		nonce[i] = buffer[i];
+	}
+
+	// Authenticate Tag
+	if(authTag){
+		std::cout<<"---- Verify Authentication Tag"<<std::endl;
+		std::filesystem::path p(path);
+		std::string TAG_path = p.string()+"_TAG";
+		std::string AD_path = ((p.parent_path() / p.stem()).string())+"_Additional_Message.txt";
+
+		std::ifstream tag_file(TAG_path, std::ios::binary);
+		unsigned char* CLAIMED_TAG = new unsigned char[16];
+
+		if(!tag_file){
+			std::cout<<"Error opening tag.";
+			exit(2);
+		}
+
+		// read tag
+		if(!tag_file.read(reinterpret_cast<char*>(CLAIMED_TAG),16)){
+			std::cout<<"Could not read TAG";
+			delete[] buffer;
+			delete[] CLAIMED_TAG;
+			delete[] nonce;
+			exit(2);
+		}
+
+		tag_file.close();
+
+		unsigned char* TAG = new unsigned char[16]{0};
+		unsigned char* ADD; 
+
+		if(AD){
+			std::ifstream temp (AD_path);
+			std::string content((std::istreambuf_iterator<char>(temp)),std::istreambuf_iterator<char>());
+
+			temp.close();
+
+			ADD = new unsigned char[content.size()];
+
+			memcpy(ADD,content.data(),content.size());
+
+			AES::auth_tag(nonce, key, keySize, ADD, content.size(), buffer, size, TAG);
+		}
+		else{
+			ADD = new unsigned char[16]{0};
+			AES::auth_tag(nonce, key, keySize, ADD, 0, buffer, size, TAG);
+		}
+
+		// Compare tags
+		if(memcmp(TAG, CLAIMED_TAG, 16) != 0){
+			std::string t;
+			std::cout<<"---- Authentication Tag for "<<path<<" FAILED."<<std::endl;
+
+			while(t != "y" && t != "n"){
+				std::cout<<"---- Skip Decrypting File? (y or n): ";
+				std::cin>>t;
+			}
+			
+			if(t == "y"){
+
+				delete[] buffer;
+				delete[] CLAIMED_TAG;
+				delete[] nonce;
+				delete[] TAG;
+
+				return;
+			}
+		}
+		else{
+			std::string t;
+			std::cout<<"---- Tag for "<<path<<" AUTHENTICATED."<<std::endl;
+
+			std::filesystem::remove(TAG_path);
+			std::filesystem::remove(AD_path);
+
+			delete[] CLAIMED_TAG;
+			delete[] TAG;
+		}
+	}
+
+	// Parallell Decryption
+	unsigned int number_of_threads = std::thread::hardware_concurrency(); 
+	int totalBlocks = size / 16;
+
+	if(number_of_threads == 0) number_of_threads = 4;
+	number_of_threads = std::min<unsigned int>(number_of_threads, totalBlocks);
+
+	int blocksPerThread = totalBlocks / number_of_threads;
+	int remainder = totalBlocks % number_of_threads;
+
+	std::vector<std::thread> threads;
+	int currentBlock = 0;
+
+	for(unsigned int t = 0; t < number_of_threads; t++){
+		int blocksForThread = blocksPerThread + (t < remainder ? 1 : 0);
+		int start = currentBlock;
+		int end = currentBlock + blocksForThread;
+
+		threads.emplace_back(worker, buffer,start,end,key,keySize,nonce);
+		currentBlock = end;
+	}
+
+	for(auto& th : threads){
+		th.join();
+	}
+
+	// Get padding
+	std::streamsize padding = buffer[size-1];
+
+	inputFile.close();
+	std::filesystem::remove(path);
+
+	// output file stream
+	std::ofstream outputFile(outputPath, std::ios::binary);
+
+	if(!outputFile.write(reinterpret_cast<char*>(buffer+12), size-padding)){
+		delete[] buffer;
+		delete[] nonce;
+		std::cout<<"error write";
+		exit(3);
+	}
+
+	outputFile.close();
+
+	delete[] nonce;
+	delete[] buffer;
+}
+
+
+void fileHandler::HW_AES_GCM(const std::string& path, unsigned char* key, const bool& replaceFlag, const int& keySize, const std::string& outputFilePath, bool authTag, std::string AD){
+
+	// Read file 
+
+	// input file stream
+	std::ifstream inputFile(path, std::ios::binary);
+
+	std::string outputPath;
+
+	// Construct output path
+	if(replaceFlag){
+		outputPath = path;
+	}
+	else{
+		outputPath = outputFilePath;
+	}
+
+
+	if(!inputFile){
+		std::cout<<"Error opening file.";
+		exit(2);
+	}
+
+
+	// get size of file
+	inputFile.seekg(0, std::ios::end);
+	std::streamsize size = inputFile.tellg();
+	inputFile.seekg(0, std::ios::beg);
+
+	// padding needed for AES
+	std::streamsize padding = 16-(size%16);
+
+
+	// Generate nonce || counter = 0
+	unsigned char* nonce = genKey(128);
+
+	// Apply counter = 0 to nonce
+	for(int i = 12; i<15; i++){
+		nonce[i] = 0x00;
+	}
+
+	nonce[15] = 0x01;
+
+
+	// Buffer to store data + Apply Padding, PKC#7
+	unsigned char* buffer = new unsigned char[size + padding + 12];
+
+	// Store nonce in buffer
+	for(int i = 0; i < 12; i++){
+		buffer[i] = nonce[i];
+	}
+
+	// read data into buffer
+	if(!inputFile.read(reinterpret_cast<char*>(buffer+12),size)){
+		std::cout<<"Could not read data into buffer";
+		delete[] buffer;
+		exit(2);
+	}
+
+	// Read padding bytes into buffer
+	for(int i = size+12; i < size+padding+12; i++){
+		buffer[i] = static_cast<unsigned char>(padding);
+	}
+
+	// Parallell Encryption
+	unsigned int number_of_threads = std::thread::hardware_concurrency(); 
+	int totalBlocks = (size + padding) / 16;
+
+	if(number_of_threads == 0) number_of_threads = 4;
+	number_of_threads = std::min<unsigned int>(number_of_threads, totalBlocks-1);
+
+	int blocksPerThread = totalBlocks / number_of_threads;
+	int remainder = totalBlocks % number_of_threads;
+
+	std::vector<std::thread> threads;
+	int currentBlock = 0;
+
+	for(unsigned int t = 0; t < number_of_threads; t++){
+		int blocksForThread = blocksPerThread + (t < remainder ? 1 : 0);
+		int start = currentBlock;
+		int end = currentBlock + blocksForThread;
+
+		threads.emplace_back(HW_worker, buffer,start,end,key,keySize,nonce);
+		currentBlock = end;
+
+	}
+
+	for(auto& th : threads){
+		th.join();
+	}
+
+
+	// delete old file
+	if(replaceFlag){
+		std::cout<<"---- Remove original file:"<<std::endl;
+		inputFile.close();
+		std::filesystem::remove(path);
+	}
+	else{
+		inputFile.close();
+	}
+
+
+	auto start = std::chrono::high_resolution_clock::now();
+
+	
+	
+	// output file stream
+	std::ofstream outputFile(outputPath, std::ios::binary);
+
+	if(!outputFile.write(reinterpret_cast<char*>(buffer), size+padding+12)){
+		delete[] buffer;
+		delete[] nonce;
+		std::cout<<"error write";
+		exit(3);
+	}
+	outputFile.close();
+	
+
+
+	auto end = std::chrono::high_resolution_clock::now();
+
+	auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+
+	std::cout<<"Writing to file finished in : "<<duration.count() << " ms"<<std::endl;
+
+
+	if(authTag){
+		std::cout<<"---- Creating Authentication Tag"<<std::endl;
+
+		// Generate Authentication Tag
+		unsigned char* TAG = new unsigned char[16]{0};
+		unsigned char* ADD;
+		
+		if(AD == "n"){
+			ADD = new unsigned char[16]{0};
+			AES::HW_auth_tag(nonce, key, keySize, ADD, 0, buffer, size+padding+12, TAG);
+		}
+		else{
+			ADD = new unsigned char[AD.size()]{0};
+			memcpy(ADD, AD.data(), AD.size());
+
+			AES::HW_auth_tag(nonce, key, keySize, ADD, AD.size(), buffer, size+padding+12, TAG);
+		}
+
+		// output Auth TAG file stream
+		std::ofstream outputFileTag(outputPath+"_TAG", std::ios::binary);
+
+		if(!outputFileTag.write(reinterpret_cast<char*>(TAG), 16)){
+			std::cout<<"error write TAG";
+		}
+
+		outputFileTag.close();
+
+		// Write AD to a text file
+		if(AD != "n"){
+			std::filesystem::path t(outputPath);
+			std::string AD_path = (t.parent_path() / t.stem()).string();
+
+			std::ofstream outputAD;
+			outputAD.open(AD_path+"_Additional_Message.txt");
+			outputAD<<AD;
+			outputAD.close();
+		}
+
+		delete[] TAG;
+	}
+
+	delete[] nonce;
+	delete[] buffer;
+}
+
+
+void fileHandler::HW_AES_GCM_DECRYPTION(const std::string& path, unsigned char* key, const int& keySize, bool authTag, bool AD){
+
+	// Read file 
+
+	// input file stream
+	std::ifstream inputFile(path, std::ios::binary);
+
+	std::string outputPath = path;
+
+	if(!inputFile){
+		std::cout<<"Error opening file.";
+		exit(2);
+	}
+
+
+	// get size of file
+	inputFile.seekg(0, std::ios::end);
+	std::streamsize size = inputFile.tellg();
+	inputFile.seekg(0, std::ios::beg);
+
+
+	// Get nonce
+	unsigned char* nonce;
+	nonce = new unsigned char[16]{0};
+
+	// Buffer to store data 
+	unsigned char* buffer = new unsigned char[size];
+
+
+	// read data into buffer
+	if(!inputFile.read(reinterpret_cast<char*>(buffer),size)){
+		std::cout<<"Could not read data into buffer";
+		delete[] buffer;
+		exit(2);
+	}
+
+	// load nonce
+	for(int i = 0; i < 12; i++){
+		nonce[i] = buffer[i];
+	}
+
+	// Authenticate Tag
+	if(authTag){
+		std::cout<<"---- Verify Authentication Tag"<<std::endl;
+		std::filesystem::path p(path);
+		std::string TAG_path = p.string()+"_TAG";
+		std::string AD_path = ((p.parent_path() / p.stem()).string())+"_Additional_Message.txt";
+
+		std::ifstream tag_file(TAG_path, std::ios::binary);
+		unsigned char* CLAIMED_TAG = new unsigned char[16];
+
+		if(!tag_file){
+			std::cout<<"Error opening tag.";
+			exit(2);
+		}
+
+		// read tag
+		if(!tag_file.read(reinterpret_cast<char*>(CLAIMED_TAG),16)){
+			std::cout<<"Could not read TAG";
+			delete[] buffer;
+			delete[] CLAIMED_TAG;
+			delete[] nonce;
+			exit(2);
+		}
+
+		tag_file.close();
+
+		unsigned char* TAG = new unsigned char[16]{0};
+		unsigned char* ADD; 
+
+		if(AD){
+			std::ifstream temp (AD_path);
+			std::string content((std::istreambuf_iterator<char>(temp)),std::istreambuf_iterator<char>());
+
+			temp.close();
+
+			ADD = new unsigned char[content.size()];
+
+			memcpy(ADD,content.data(),content.size());
+
+			AES::HW_auth_tag(nonce, key, keySize, ADD, content.size(), buffer, size, TAG);
+		}
+		else{
+			ADD = new unsigned char[16]{0};
+			AES::HW_auth_tag(nonce, key, keySize, ADD, 0, buffer, size, TAG);
+		}
+
+		// Compare tags
+		if(memcmp(TAG, CLAIMED_TAG, 16) != 0){
+			std::string t;
+			std::cout<<"---- Authentication Tag for "<<path<<" FAILED."<<std::endl;
+
+			while(t != "y" && t != "n"){
+				std::cout<<"---- Skip Decrypting File? (y or n): ";
+				std::cin>>t;
+			}
+			
+			if(t == "y"){
+
+				delete[] buffer;
+				delete[] CLAIMED_TAG;
+				delete[] nonce;
+				delete[] TAG;
+
+				return;
+			}
+		}
+		else{
+			std::string t;
+			std::cout<<"---- Tag for "<<path<<" AUTHENTICATED."<<std::endl;
+
+			std::filesystem::remove(TAG_path);
+			std::filesystem::remove(AD_path);
+
+			delete[] CLAIMED_TAG;
+			delete[] TAG;
+		}
+	}
+
+	// Parallell Decryption
+	unsigned int number_of_threads = std::thread::hardware_concurrency(); 
+	int totalBlocks = size / 16;
+
+	if(number_of_threads == 0) number_of_threads = 4;
+	number_of_threads = std::min<unsigned int>(number_of_threads, totalBlocks);
+
+	int blocksPerThread = totalBlocks / number_of_threads;
+	int remainder = totalBlocks % number_of_threads;
+
+	std::vector<std::thread> threads;
+	int currentBlock = 0;
+
+	for(unsigned int t = 0; t < number_of_threads; t++){
+		int blocksForThread = blocksPerThread + (t < remainder ? 1 : 0);
+		int start = currentBlock;
+		int end = currentBlock + blocksForThread;
+
+		threads.emplace_back(HW_worker, buffer,start,end,key,keySize,nonce);
+		currentBlock = end;
+	}
+
+	for(auto& th : threads){
+		th.join();
+	}
+
+	// Get padding
+	std::streamsize padding = buffer[size-1];
+
+	inputFile.close();
+	std::filesystem::remove(path);
+
+	// output file stream
+	std::ofstream outputFile(outputPath, std::ios::binary);
+
+	if(!outputFile.write(reinterpret_cast<char*>(buffer+12), size-padding)){
+		delete[] buffer;
+		delete[] nonce;
+		std::cout<<"error write";
+		exit(3);
+	}
+
+	outputFile.close();
+
+	delete[] nonce;
+	delete[] buffer;
+}
