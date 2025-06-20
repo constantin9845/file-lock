@@ -112,6 +112,3 @@ By using this program, you acknowledge and agree to the following:
 For support or feedback, feel free to [open an issue](https://github.com/constantin9845/file-lock/issues).
 
 
-<br>
-Desktop version - https://github.com/constantin9845/File-lock-desktop
-
