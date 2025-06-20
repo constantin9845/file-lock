@@ -1,10 +1,7 @@
 #include <iostream>
 #include <bitset>
 
-#include <wmmintrin.h>    // AES-NI intrinsics
-#include <emmintrin.h>    // SSE2
-#include <tmmintrin.h>    // SSSE3
-#include <smmintrin.h>
+#include <wmmintrin.h>   
 
 class AES{
     public:

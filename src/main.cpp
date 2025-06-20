@@ -1,6 +1,10 @@
 #include "../include/fileHandler.h"
 #include <chrono>
 
+#ifdef _WIN32
+	#include <intrin.h>  
+#endif
+
 void guide(){
 	std::cout<<"GUIDE";
 }
@@ -185,6 +189,12 @@ void menu(std::string& file, bool& directionFlag, int& keySize, std::string& key
 	
 }
 
+bool check_cpu_win(){
+	int cpu_info[4];
+    __cpuid(cpu_info, 1);
+    
+    return (cpu_info[2] & (1 << 25)) != 0; // check bit 25
+}
 
 int main(int argc, char const *argv[]){
 
@@ -207,6 +217,16 @@ int main(int argc, char const *argv[]){
 	std::filesystem::path t(path);
 	std::string star = t.filename().string();
 	std::string outputFilePath = "";
+
+	// CHeck for AES hardware support
+	bool hw_available = false;
+#ifdef _WIN32
+	hw_available = check_cpu_win();
+
+#elif defined(__x86_64__) || defined(__i386__)
+	hw_available = __builtin_cpu_supports("aes");
+#endif
+
 
 
 #ifdef _WIN32
@@ -277,7 +297,12 @@ int main(int argc, char const *argv[]){
 
 			std::cout<<"-- "<<path<<std::endl;
 
-			fileHandler::HW_AES_GCM(path, key, replaceFlag, keySize, outputFilePath, authTag, AD);
+			if(hw_available){
+				fileHandler::HW_AES_GCM(path, key, replaceFlag, keySize, outputFilePath, authTag, AD);
+			}
+			else{
+				fileHandler::AES_GCM(path, key, replaceFlag, keySize, outputFilePath, authTag, AD);
+			}
 
 
 			auto end = std::chrono::high_resolution_clock::now();
@@ -327,7 +352,12 @@ int main(int argc, char const *argv[]){
 						std::cout<<"-- "<<entry.path().string()<<std::endl;
 
 						// encrypt entry
-						fileHandler::HW_AES_GCM(entry.path().string(), key, replaceFlag, keySize, outputPath, authTag, AD);
+						if(hw_available){
+							fileHandler::HW_AES_GCM(path, key, replaceFlag, keySize, outputFilePath, authTag, AD);
+						}
+						else{
+							fileHandler::AES_GCM(path, key, replaceFlag, keySize, outputFilePath, authTag, AD);
+						}
 					}
 				}
 
@@ -358,7 +388,12 @@ int main(int argc, char const *argv[]){
 			auto start = std::chrono::high_resolution_clock::now();
 			
 
-			fileHandler::HW_AES_GCM_DECRYPTION(path, k, keySize, authTag, AD=="y");
+			if(hw_available){
+				fileHandler::HW_AES_GCM_DECRYPTION(path, k, keySize, authTag, AD=="y");
+			}
+			else{
+				fileHandler::AES_GCM_DECRYPTION(path, k, keySize, authTag, AD=="y");
+			}
 
 			
 			auto end = std::chrono::high_resolution_clock::now();
@@ -397,8 +432,12 @@ int main(int argc, char const *argv[]){
 						// logs
 						std::cout<<"-- "<<entry.path().string()<<std::endl;
 						
-						fileHandler::HW_AES_GCM_DECRYPTION(entry.path().string(), k, keySize, authTag, (AD == "y"));
-						
+						if(hw_available){
+							fileHandler::HW_AES_GCM_DECRYPTION(entry.path().string(), k, keySize, authTag, (AD == "y"));
+						}
+						else{
+							fileHandler::AES_GCM_DECRYPTION(entry.path().string(), k, keySize, authTag, (AD == "y"));
+						}
 					}
 				}
 
