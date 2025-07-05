@@ -516,6 +516,90 @@ unsigned int* AES::genKey128(unsigned char* K){
 		return W;
 
 	}
+
+#elif defined(__aarch64__) || defined(__arm64__)
+	uint8x16_t* AES::genKey128_HW_ARM(unsigned char* key){
+
+		// has 44 times 4 bytes
+		unsigned int* temp_key = genKey128(key); 
+
+		// convert key format
+		// 11 rounds of 16 bytes --> need 16 byte allignment
+		uint8x16_t* res_key = static_cast<uint8x16_t*>(std::aligned_alloc(16, 176));
+
+		for(int i = 0; i < 11; i++){
+			uint8_t temp[16];
+
+			for(int j = 0; j < 4; j++){
+				uint32_t single_word = temp_key[i * 4 + j];
+
+				temp[j * 4 + 0] = (single_word >> 24) & 0xFF;
+				temp[j * 4 + 1] = (single_word >> 16) & 0xFF;
+				temp[j * 4 + 2] = (single_word >> 8) & 0xFF;
+				temp[j * 4 + 3] = single_word & 0xFF;
+			}
+
+			res_key[i] = vld1q_u8(temp);
+		}
+
+		delete[] temp_key;
+		return res_key;
+	}
+
+	uint8x16_t* AES::genKey192_HW_ARM(unsigned char* key){
+
+		// has 44 times 4 bytes
+		unsigned int* temp_key = genKey192(key); 
+
+		// convert key format
+		// 11 rounds of 16 bytes --> need 16 byte allignment
+		uint8x16_t* res_key = static_cast<uint8x16_t*>(std::aligned_alloc(16, 208));
+
+		for(int i = 0; i < 13; i++){
+			uint8_t temp[16];
+
+			for(int j = 0; j < 4; j++){
+				uint32_t single_word = temp_key[i * 4 + j];
+
+				temp[j * 4 + 0] = (single_word >> 24) & 0xFF;
+				temp[j * 4 + 1] = (single_word >> 16) & 0xFF;
+				temp[j * 4 + 2] = (single_word >> 8) & 0xFF;
+				temp[j * 4 + 3] = single_word & 0xFF;
+			}
+
+			res_key[i] = vld1q_u8(temp);
+		}
+
+		delete[] temp_key;
+		return res_key;
+	}
+
+	uint8x16_t* AES::genKey256_HW_ARM(unsigned char* key){
+		
+		unsigned int* temp_key = genKey256(key); 
+
+		// convert key format
+		// 11 rounds of 16 bytes --> need 16 byte allignment
+		uint8x16_t* res_key = static_cast<uint8x16_t*>(std::aligned_alloc(16, 240));
+
+		for(int i = 0; i < 15; i++){
+			uint8_t temp[16];
+
+			for(int j = 0; j < 4; j++){
+				uint32_t single_word = temp_key[i * 4 + j];
+
+				temp[j * 4 + 0] = (single_word >> 24) & 0xFF;
+				temp[j * 4 + 1] = (single_word >> 16) & 0xFF;
+				temp[j * 4 + 2] = (single_word >> 8) & 0xFF;
+				temp[j * 4 + 3] = single_word & 0xFF;
+			}
+
+			res_key[i] = vld1q_u8(temp);
+		}
+
+		delete[] temp_key;
+		return res_key;
+	}
 #endif
 
 // 192 bit key scheduler
@@ -857,7 +941,56 @@ void AES::GHASH(unsigned char* prev_g, unsigned char* input, int input_index, co
 	}
 #elif defined(__aarch64__) || defined(__arm64__)
 	void AES::HW_ARM_GHASH(unsigned char* prev_g, unsigned char* input, int input_index, const unsigned char* HASH_SUBKEY){
-		
+
+		uint8x16_t prev_g_temp = vld1q_u8(reinterpret_cast<const uint8_t*>(prev_g));
+		uint8x16_t input_temp = vld1q_u8(reinterpret_cast<const uint8_t*>(input+input_index));
+		uint8x16_t HASH_SUBKEY_temp = vld1q_u8(reinterpret_cast<const uint8_t*>(HASH_SUBKEY));
+
+		prev_g_temp = veorq_u8(prev_g_temp, input_temp);
+
+		// gm multiplication
+		poly64x2_t x_poly = vreinterpretq_p64_u8(prev_g_temp);
+    	poly64x2_t h_poly = vreinterpretq_p64_u8(HASH_SUBKEY_temp);
+
+	
+		poly64_t x_lo = vget_lane_p64(vget_low_p64(x_poly),0);
+		poly64_t x_hi = vget_lane_p64(vget_high_p64(x_poly),0);
+		poly64_t h_lo = vget_lane_p64(vget_low_p64(h_poly),0);
+		poly64_t h_hi = vget_lane_p64(vget_high_p64(h_poly),0);
+
+		poly128_t R00 = vmull_p64(x_lo, h_lo); 
+		poly128_t R01 = vmull_p64(x_lo, h_hi); 
+		poly128_t R10 = vmull_p64(x_hi, h_lo); 
+		poly128_t R11 = vmull_p64(x_hi, h_hi); 
+
+		poly128_t R_mid = vreinterpretq_p128_u8(
+			veorq_u8(
+				vreinterpretq_u8_p128(R01),
+				vreinterpretq_u8_p128(R10)
+			)
+		);
+
+
+		uint8x16_t R_lo = vreinterpretq_u8_p128(R00);
+		uint8x16_t R_mid_u8 = vreinterpretq_u8_p128(R_mid);
+		uint8x16_t R_hi = vreinterpretq_u8_p128(R11);
+
+		uint8x16_t tmp = veorq_u8(
+			veorq_u8(
+				veorq_u8(
+					vshlq_n_u8(R_hi, 1),
+					vshlq_n_u8(R_hi, 2)
+				),
+				vshlq_n_u8(R_hi, 7)
+			),
+			R_hi
+		);
+
+		tmp = veorq_u8(tmp, vextq_u8(R_mid_u8, R_mid_u8, 8));
+
+		uint8x16_t result = veorq_u8(R_lo, tmp);
+
+		vst1q_u8(reinterpret_cast<uint8_t*>(prev_g), result);
 	}
 #endif
 
@@ -1120,7 +1253,45 @@ void AES::encryptCTR(unsigned char* nonce, unsigned char* key, const int& keySiz
 
 #elif defined(__aarch64__) || defined(__arm64__)
 	void AES::HW_ARM_ENCRYPT_CTR(unsigned char* nonce, unsigned char* key, const int& keySize, unsigned char* buffer){
+		
+		// load nonce
+		uint8x16_t block = vld1q_u8(reinterpret_cast<const uint8_t*>(nonce));
 
+		// expand key
+		uint8x16_t* expanded_key = nullptr;
+
+		if(keySize == 128){
+			expanded_key = genKey128_HW_ARM(key);
+		}
+		else if(keySize == 192){
+			expanded_key = genKey192_HW_ARM(key);
+		}
+		else{
+			expanded_key = genKey256_HW_ARM(key);
+		}
+
+		// key whitening
+		block = veorq_u8(block, expanded_key[0]);
+
+		// Encryption (except last round)
+		for(int i = 1; i < (keySize == 128 ? 10 : (keySize == 192) ? 12 : 14); i++){
+			block = vaeseq_u8(block, expanded_key[i]);
+			block = vaesmcq_u8(block);
+		}
+
+		// last round
+		block = vaeseq_u8(block, expanded_key[(keySize == 128 ? 10 : (keySize == 192) ? 12 : 14)]);
+
+		// XOR with text/ciphertext
+		uint8x16_t temp_buffer = vld1q_u8(reinterpret_cast<const uint8_t*>(buffer));
+
+		block = veorq_u8(block, temp_buffer);
+
+		// store output
+		vst1q_u8(reinterpret_cast<uint8_t*>(buffer), block);
+
+		delete[] expanded_key;
+		expanded_key = nullptr;
 	}
 #endif
 

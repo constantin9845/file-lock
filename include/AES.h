@@ -4,6 +4,8 @@
 
 #if defined(__x86_64__) || defined(__i386__)
     #include <wmmintrin.h>   
+#elif defined(__aarch64__) || defined(__arm64__)
+    #include <arm_neon.h>
 #endif
 
 class AES{
@@ -98,12 +100,20 @@ class AES{
         // 256 Key scheduler
         static unsigned int* genKey256(unsigned char K[]);
 
-#if defined(__x86_64__) || defined(__i386__)
-   static __m128i* genKey128_HW(__m128i key);
-   
-   static __m128i* genKey256_HW(__m128i key1, __m128i key2);
+        #if defined(__x86_64__) || defined(__i386__)
+            static __m128i* genKey128_HW(__m128i key);
 
-#endif
+            // add 192 by using regular key expansion function and converting the formats.
+            
+            static __m128i* genKey256_HW(__m128i key1, __m128i key2);
+
+        #elif defined(__aarch64__) || defined(__arm64__)
+            static uint8x16_t* genKey128_HW_ARM(unsigned char* key);
+
+            static uint8x16_t* genKey192_HW_ARM(unsigned char* key);
+            
+            static uint8x16_t* genKey256_HW_ARM(unsigned char* key);
+        #endif
 
         // G function for key expansion
         static unsigned int g(unsigned int w, unsigned int& gConst);
@@ -129,7 +139,7 @@ class AES{
         #elif defined(__aarch64__) || defined(__arm64__)
             static void HW_ARM_GHASH(unsigned char* prev_g, unsigned char* input, int input_index, const unsigned char* HASH_SUBKEY);
         #endif
-        
+
         // GHASH Multiplication
         static void GALOIS_MULTIPLICATION(unsigned char* result, const unsigned char* HASH_SUBKEY);
 
