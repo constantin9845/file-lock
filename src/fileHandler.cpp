@@ -807,6 +807,8 @@ void fileHandler::HW_AES_GCM(const std::string& path, unsigned char* key, const 
 		buffer[i] = static_cast<unsigned char>(padding);
 	}
 
+	auto start = std::chrono::high_resolution_clock::now();
+
 	// Parallell Encryption
 	unsigned int number_of_threads = std::thread::hardware_concurrency(); 
 	int totalBlocks = (size + padding) / 16;
@@ -834,6 +836,12 @@ void fileHandler::HW_AES_GCM(const std::string& path, unsigned char* key, const 
 		th.join();
 	}
 
+	auto end = std::chrono::high_resolution_clock::now();
+
+	auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+
+	std::cout<<"Encryption Finished in : "<<duration.count() << " ms"<<std::endl;
+
 
 	// delete old file
 	if(replaceFlag){
@@ -846,7 +854,7 @@ void fileHandler::HW_AES_GCM(const std::string& path, unsigned char* key, const 
 	}
 
 
-	auto start = std::chrono::high_resolution_clock::now();
+	start = std::chrono::high_resolution_clock::now();
 
 	
 	
@@ -863,9 +871,9 @@ void fileHandler::HW_AES_GCM(const std::string& path, unsigned char* key, const 
 	
 
 
-	auto end = std::chrono::high_resolution_clock::now();
+	end = std::chrono::high_resolution_clock::now();
 
-	auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+	duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
 	std::cout<<"Writing to file finished in : "<<duration.count() << " ms"<<std::endl;
 

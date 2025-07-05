@@ -189,12 +189,15 @@ void menu(std::string& file, bool& directionFlag, int& keySize, std::string& key
 	
 }
 
-bool check_cpu_win(){
-	int cpu_info[4];
-    __cpuid(cpu_info, 1);
-    
-    return (cpu_info[2] & (1 << 25)) != 0; // check bit 25
-}
+
+#ifdef _WIN32
+	bool check_cpu_win(){
+		int cpu_info[4];
+		__cpuid(cpu_info, 1);
+		
+		return (cpu_info[2] & (1 << 25)) != 0; // check bit 25
+	}
+#endif
 
 int main(int argc, char const *argv[]){
 
@@ -226,6 +229,8 @@ int main(int argc, char const *argv[]){
 #elif defined(__x86_64__) || defined(__i386__)
 	hw_available = __builtin_cpu_supports("aes");
 #endif
+
+	std::cout<<"-----------"<<hw_available<<"---------"<<std::endl;
 
 
 

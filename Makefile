@@ -1,13 +1,12 @@
 
 RM = rm -f
-CLEANO = del src/*.o
-CXXFLAGS := -std=c++17
+CLEANO = rm src/*.o
+CXXFLAGS := -std=c++17 -maes -mpclmul "-msse4.1" -O2
 TARGET := enc
 
 ifeq ($(OS), Windows_NT)
 	RM = del /q
 	CLEANO = del .\\src\\*.o
-	CXXFLAGS := -std=c++17 -maes -mpclmul "-msse4.1" -O2
 	TARGET := enc.exe
 endif
 
@@ -22,8 +21,7 @@ all: $(TARGET)
 
 $(TARGET): $(OBJS)
 	$(CXX) $(CXXFLAGS) -o $@ $^
-
+	$(CLEANO)
 
 clean:
-	$(CLEANO)
 	$(RM) $(TARGET)

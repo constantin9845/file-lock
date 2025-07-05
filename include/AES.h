@@ -1,6 +1,6 @@
 #include <iostream>
 #include <bitset>
-
+#include <cstring>
 #include <wmmintrin.h>   
 
 class AES{

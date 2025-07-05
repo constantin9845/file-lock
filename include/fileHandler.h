@@ -10,6 +10,7 @@
 #include <thread>
 #include <cstring>
 #include <fcntl.h>
+#include <vector>
 
 #ifndef FH_H
 #define FH_H
