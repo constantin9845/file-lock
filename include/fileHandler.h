@@ -46,7 +46,6 @@ public:
 	static void HW_AES_GCM_DECRYPTION(const std::string& path, unsigned char* key, const int& keySize, bool authTag, bool AD);
 
 
-
 	// Generate 128 bit key
 	// unix systems -> /dev/urandom , WIN -> random module
 	static unsigned char* genKey(const int& keySize);
@@ -91,7 +90,6 @@ public:
 	static void worker(unsigned char* buffer, int startBlock, int endBlock, unsigned char* key, int keySize, const unsigned char* baseNonce);
 
 	static void HW_worker(unsigned char* buffer, int startBlock, int endBlock, unsigned char* key, int keySize, unsigned char* baseNonce);
-
 private:
 	
 

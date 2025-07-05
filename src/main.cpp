@@ -5,9 +5,10 @@
 	#include <intrin.h>  
 #endif
 
-void guide(){
-	std::cout<<"GUIDE";
-}
+#ifdef __APPLE__
+	#include <sys/types.h>
+	#include <sys/sysctl.h>
+#endif
 
 void menu(std::string& file, bool& directionFlag, int& keySize, std::string& keyPath, bool& replaceFlag, std::string& AD, bool& authTag){
 
@@ -199,6 +200,18 @@ void menu(std::string& file, bool& directionFlag, int& keySize, std::string& key
 	}
 #endif
 
+#if defined(__aarch64__) || defined(__arm64__)
+	bool check_AES_ARM(){
+		int aes = 0;
+		size_t size = sizeof(aes);
+		
+		if (sysctlbyname("hw.optional.arm.FEAT_AES", &aes, &size, nullptr, 0) == 0) {
+			return aes == 1;
+		}
+		return false;
+	}
+#endif
+
 int main(int argc, char const *argv[]){
 
 	std::ios_base::sync_with_stdio(false);
@@ -228,6 +241,9 @@ int main(int argc, char const *argv[]){
 
 #elif defined(__x86_64__) || defined(__i386__)
 	hw_available = __builtin_cpu_supports("aes");
+
+#elif defined(__aarch64__) || defined(__arm64__)
+	hw_available = check_AES_ARM();
 #endif
 
 	std::cout<<"-----------"<<hw_available<<"---------"<<std::endl;

@@ -408,7 +408,11 @@ void fileHandler::HW_worker(unsigned char* buffer, int startBlock, int endBlock,
 		std::memcpy(nonce, baseNonce, 16);
 		setCounterInNonce(nonce, block); // block number = counter
 
-		AES::HW_ENCRYPT_CTR(nonce, key, keySize, buffer+i);
+		#if defined(__x86_64__) || defined(__i386__)
+			AES::HW_ENCRYPT_CTR(nonce, key, keySize, buffer+i);
+		#elif defined(__aarch64__) || defined(__arm64__)
+			AES::HW_ARM_ENCRYPT_CTR(nonce, key, keySize, buffer+i);
+		#endif
 	}
 }
 
@@ -742,7 +746,7 @@ void fileHandler::AES_GCM_DECRYPTION(const std::string& path, unsigned char* key
 	delete[] buffer;
 }
 
-
+// Hardware functions
 void fileHandler::HW_AES_GCM(const std::string& path, unsigned char* key, const bool& replaceFlag, const int& keySize, const std::string& outputFilePath, bool authTag, std::string AD){
 
 	// Read file 
@@ -887,6 +891,7 @@ void fileHandler::HW_AES_GCM(const std::string& path, unsigned char* key, const 
 		
 		if(AD == "n"){
 			ADD = new unsigned char[16]{0};
+
 			AES::HW_auth_tag(nonce, key, keySize, ADD, 0, buffer, size+padding+12, TAG);
 		}
 		else{
@@ -922,7 +927,6 @@ void fileHandler::HW_AES_GCM(const std::string& path, unsigned char* key, const 
 	delete[] nonce;
 	delete[] buffer;
 }
-
 
 void fileHandler::HW_AES_GCM_DECRYPTION(const std::string& path, unsigned char* key, const int& keySize, bool authTag, bool AD){
 
@@ -1090,3 +1094,5 @@ void fileHandler::HW_AES_GCM_DECRYPTION(const std::string& path, unsigned char* 
 	delete[] nonce;
 	delete[] buffer;
 }
+
+

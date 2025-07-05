@@ -1,7 +1,10 @@
 #include <iostream>
 #include <bitset>
 #include <cstring>
-#include <wmmintrin.h>   
+
+#if defined(__x86_64__) || defined(__i386__)
+    #include <wmmintrin.h>   
+#endif
 
 class AES{
     public:
@@ -14,8 +17,12 @@ class AES{
 
         static void HW_auth_tag(unsigned char* nonce, unsigned char* key, const int& keySize, unsigned char* AD, int AD_size, unsigned char* Y, const int Y_size, unsigned char* TAG);
 
-        static void HW_ENCRYPT_CTR(unsigned char* nonce, unsigned char* key, const int& keySize, unsigned char* buffer);
+        #if defined(__x86_64__) || defined(__i386__)
+            static void HW_ENCRYPT_CTR(unsigned char* nonce, unsigned char* key, const int& keySize, unsigned char* buffer);
 
+        #elif defined(__aarch64__) || defined(__arm64__)
+			static void HW_ARM_ENCRYPT_CTR(unsigned char* nonce, unsigned char* key, const int& keySize, unsigned char* buffer);
+		#endif
 
     private:
 
@@ -85,15 +92,18 @@ class AES{
         // 128 Key scheduler
         static unsigned int* genKey128(unsigned char K[]);
 
-        static __m128i* genKey128_HW(__m128i key);
-
         // 192 Key scheduler
         static unsigned int* genKey192(unsigned char K[]);
 
         // 256 Key scheduler
         static unsigned int* genKey256(unsigned char K[]);
 
-        static __m128i* genKey256_HW(__m128i key1, __m128i key2);
+#if defined(__x86_64__) || defined(__i386__)
+   static __m128i* genKey128_HW(__m128i key);
+   
+   static __m128i* genKey256_HW(__m128i key1, __m128i key2);
+
+#endif
 
         // G function for key expansion
         static unsigned int g(unsigned int w, unsigned int& gConst);
@@ -114,8 +124,12 @@ class AES{
         // GHASH function
         static void GHASH(unsigned char* prev_g, unsigned char* input, int input_index, const unsigned char* HASH_SUBKEY);
 
-        static void HW_GHASH(unsigned char* prev_g, unsigned char* input, int input_index, const unsigned char* HASH_SUBKEY);
-
+        #if defined(__x86_64__) || defined(__i386__)
+            static void HW_GHASH(unsigned char* prev_g, unsigned char* input, int input_index, const unsigned char* HASH_SUBKEY);
+        #elif defined(__aarch64__) || defined(__arm64__)
+            static void HW_ARM_GHASH(unsigned char* prev_g, unsigned char* input, int input_index, const unsigned char* HASH_SUBKEY);
+        #endif
+        
         // GHASH Multiplication
         static void GALOIS_MULTIPLICATION(unsigned char* result, const unsigned char* HASH_SUBKEY);
 
