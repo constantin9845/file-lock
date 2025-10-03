@@ -18,6 +18,8 @@
 #ifdef _WIN32
 	#include <random>
 	#include <windows.h>
+	#include <bcrypt.h>
+	#pragma comment(lib, "bcrypt.lib")
 #else
 	#include <unistd.h>
 	#include <errno.h>

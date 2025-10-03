@@ -107,12 +107,8 @@ unsigned char* fileHandler::genKey(const int& keySize){
 #ifdef _WIN32
 
 	// WINDOWS
-	std::random_device rd;
-	std::mt19937 eng(rd());
-	std::uniform_int_distribution<> distr(0, 255);
-
-	for(int i = 0; i < keySize/8; i++){
-		buffer[i] = static_cast<unsigned char>(distr(eng));
+	if(BCryptGenRandom(nullptr, buffer, (ULONG)(keySize/8), BCRYPT_USE_SYSTEM_PREFERRED_RNG) != 0){
+		throw std::runtime_error("BCryptGenRandom failed");
 	}
 	
 

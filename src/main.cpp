@@ -372,12 +372,14 @@ int main(int argc, char const *argv[]){
 						// logs
 						std::cout<<"-- "<<entry.path().string()<<std::endl;
 
+
+
 						// encrypt entry
 						if(hw_available){
-							fileHandler::HW_AES_GCM(path, key, replaceFlag, keySize, outputFilePath, authTag, AD);
+							fileHandler::HW_AES_GCM(entry.path().string(), key, replaceFlag, keySize, outputPath, authTag, AD);
 						}
 						else{
-							fileHandler::AES_GCM(path, key, replaceFlag, keySize, outputFilePath, authTag, AD);
+							fileHandler::AES_GCM(entry.path().string(), key, replaceFlag, keySize, outputPath, authTag, AD);
 						}
 					}
 				}
